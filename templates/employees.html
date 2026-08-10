@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-card mb-4" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div style="display: flex; align-items: center; gap: 12px; flex: 1; max-width: 450px;">
+      <div style="position: relative; width: 100%;">
+        <input type="text" id="employee-search-input" class="form-control" placeholder="Search by name, ID or department..." onkeyup="filterEmployees()">
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <select id="department-select" class="form-control" style="width: auto;" onchange="filterEmployees()">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+          <option value="{{ d }}">{{ d }}</option>
+        {% endfor %}
+      </select>
+
+      <a href="/employees/add" class="btn btn-primary">
+        <i data-lucide="user-plus" style="width: 16px;"></i> Register Employee
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Employees Grid -->
+<div class="glass-card">
+  <div class="card-title-bar">
+    <div class="card-title">
+      <i data-lucide="users" style="color: var(--primary);"></i>
+      <span>Registered Staff Directory</span>
+    </div>
+    <span class="nav-badge" id="employee-count-badge">{{ employees | length }} Staff</span>
+  </div>
+
+  <div class="custom-table-container">
+    <table class="custom-table" id="employees-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>ID</th>
+          <th>Department</th>
+          <th>Designation</th>
+          <th>Contact</th>
+          <th>Face Profiles</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if employees %}
+          {% for emp in employees %}
+            <tr data-name="{{ emp.name | lower }}" data-id="{{ emp.employee_id | lower }}" data-dept="{{ emp.department }}">
+              <td>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  {% if emp.avatar %}
+                    <img src="/{{ emp.avatar }}" class="avatar-chip" alt="{{ emp.name }}">
+                  {% else %}
+                    <div class="avatar-chip" style="background: var(--bg-input); display:flex; align-items:center; justify-content:center; font-weight:700; color: var(--primary);">
+                      {{ emp.name[0] }}
+                    </div>
+                  {% endif %}
+                  <div>
+                    <div style="font-weight: 700;">{{ emp.name }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-subtle);">Registered {{ emp.created_at }}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-weight: 700; color: var(--primary);">{{ emp.employee_id }}</td>
+              <td><span style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 6px; font-weight: 600;">{{ emp.department }}</span></td>
+              <td>{{ emp.designation }}</td>
+              <td>
+                <div style="font-size: 0.85rem;">{{ emp.email }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-subtle);">{{ emp.mobile }}</div>
+              </td>
+              <td>
+                <span class="badge-status badge-completed">
+                  <i data-lucide="scan-face" style="width: 12px;"></i> {{ emp.image_count }} Photos
+                </span>
+              </td>
+              <td>
+                {% if emp.status == 'Active' %}
+                  <span class="badge-status badge-present">Active</span>
+                {% else %}
+                  <span class="badge-status badge-absent">Inactive</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.78rem;" onclick="deleteEmployee({{ emp.id }}, '{{ emp.name }}')">
+                  <i data-lucide="trash-2" style="width: 14px;"></i> Delete
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px 0; color: var(--text-subtle);">
+              <i data-lucide="user-x" style="width: 32px; height: 32px; margin-bottom: 8px;"></i>
+              <div>No registered employees found. Click <strong>Register Employee</strong> to add staff.</div>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterEmployees() {
+  const query = document.getElementById("employee-search-input").value.toLowerCase();
+  const dept = document.getElementById("department-select").value;
+  const rows = document.querySelectorAll("#employees-table tbody tr");
+
+  let visibleCount = 0;
+  rows.forEach(row => {
+    const name = row.getAttribute("data-name") || "";
+    const id = row.getAttribute("data-id") || "";
+    const rDept = row.getAttribute("data-dept") || "";
+
+    const matchesSearch = name.includes(query) || id.includes(query) || rDept.toLowerCase().includes(query);
+    const matchesDept = !dept || rDept === dept;
+
+    if (matchesSearch && matchesDept) {
+      row.style.display = "";
+      visibleCount++;
+    } else {
+      row.style.display = "none";
+    }
+  });
+
+  const badge = document.getElementById("employee-count-badge");
+  if (badge) badge.innerText = `${visibleCount} Staff`;
+}
+
+async function deleteEmployee(id, name) {
+  if (!confirm(`Are you sure you want to delete employee '${name}'? This will purge all face embeddings.`)) return;
+
+  try {
+    const res = await fetch(`/api/employees/${id}/delete`, { method: "POST" });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Employee ${name} deleted.`, "success");
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      showToast(data.message || "Failed to delete employee", "error");
+    }
+  } catch (e) {
+    showToast("Server error deleting employee.", "error");
+  }
+}
+</script>
+{% endblock %}

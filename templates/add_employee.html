@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-card" style="max-width: 750px; margin: 0 auto;">
+  <div class="card-title-bar">
+    <div class="card-title">
+      <i data-lucide="user-plus" style="color: var(--primary);"></i>
+      <span>Register New Employee</span>
+    </div>
+    <a href="/employees" class="btn btn-secondary" style="font-size: 0.8rem;">
+      <i data-lucide="arrow-left" style="width: 14px;"></i> Back to Directory
+    </a>
+  </div>
+
+  <form id="add-employee-form" enctype="multipart/form-data">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group">
+        <label class="form-label">Employee ID *</label>
+        <input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-101" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. Sarah Jenkins" required>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <input type="text" name="department" class="form-control" placeholder="e.g. Engineering, Sales, Operations">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Designation</label>
+        <input type="text" name="designation" class="form-control" placeholder="e.g. Senior Specialist">
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group">
+        <label class="form-label">Mobile Number</label>
+        <input type="text" name="mobile" class="form-control" placeholder="+1 (555) 000-0000">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="sarah@example.com">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Account Status</label>
+      <select name="status" class="form-control">
+        <option value="Active">Active (Eligible for Attendance)</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Face Training Images * (Minimum 1 clear face photo required)</label>
+      
+      <div class="dropzone" id="file-dropzone" onclick="document.getElementById('images-input').click()">
+        <div class="dropzone-icon">
+          <i data-lucide="scan-face"></i>
+        </div>
+        <div style="font-weight: 700; margin-bottom: 4px;">Click to Select or Drop Face Photos</div>
+        <div style="font-size: 0.8rem; color: var(--text-subtle);">Select 1 to 5 clear front-facing headshots for AI face embedding.</div>
+        <input type="file" id="images-input" name="images" multiple accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+      </div>
+
+      <div id="file-preview-list" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;"></div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+      <a href="/employees" class="btn btn-secondary">Cancel</a>
+      <button type="submit" id="btn-submit" class="btn btn-primary">
+        <i data-lucide="check-circle" style="width: 16px;"></i> Register & Generate Embeddings
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleFileSelect(e) {
+  const files = e.target.files;
+  const list = document.getElementById("file-preview-list");
+  list.innerHTML = "";
+
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const chip = document.createElement("div");
+      chip.style.cssText = "position: relative; width: 70px; height: 70px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-highlight);";
+      chip.innerHTML = `<img src="${evt.target.result}" style="width: 100%; height: 100%; object-fit: cover;" />`;
+      list.appendChild(chip);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById("add-employee-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const btn = document.getElementById("btn-submit");
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" style="width:16px;" class="spin"></i> Processing InsightFace Embeddings...`;
+
+  const formData = new FormData(this);
+
+  try {
+    const res = await fetch("/employees/add", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+
+    if (data.status === "success") {
+      showToast(data.message, "success");
+      setTimeout(() => { window.location.href = "/employees"; }, 1200);
+    } else {
+      showToast(data.message || "Failed to register employee", "error");
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="check-circle" style="width: 16px;"></i> Register & Generate Embeddings`;
+    }
+  } catch (err) {
+    showToast("Server error during enrollment.", "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="check-circle" style="width: 16px;"></i> Register & Generate Embeddings`;
+  }
+});
+</script>
+{% endblock %}

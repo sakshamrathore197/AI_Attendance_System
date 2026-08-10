@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid-2">
+  <!-- CCTV Upload & Process Panel -->
+  <div class="glass-card">
+    <div class="card-title-bar">
+      <div class="card-title">
+        <i data-lucide="video" style="color: var(--primary);"></i>
+        <span>Upload CCTV Footage for Attendance Processing</span>
+      </div>
+    </div>
+
+    <form id="video-process-form" enctype="multipart/form-data">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Camera Identifier / Location *</label>
+          <input type="text" name="camera_name" class="form-control" placeholder="e.g. Main Entrance Cam-01" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Attendance Date *</label>
+          <input type="date" name="attendance_date" class="form-control" value="{{ today_date }}" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select CCTV Video File * (MP4, AVI, MOV, MKV)</label>
+        
+        <div class="dropzone" id="video-dropzone" onclick="document.getElementById('video-file-input').click()">
+          <div class="dropzone-icon">
+            <i data-lucide="upload-cloud"></i>
+          </div>
+          <div style="font-weight: 700; margin-bottom: 4px;" id="dropzone-text">Click to Select or Drop CCTV Footage File</div>
+          <div style="font-size: 0.8rem; color: var(--text-subtle);">Supported formats: .mp4, .avi, .mov, .mkv</div>
+          <input type="file" id="video-file-input" name="video" accept="video/*" style="display: none;" required onchange="handleVideoFileSelect(event)">
+        </div>
+      </div>
+
+      <!-- Real-time Progress Bar Card -->
+      <div id="progress-card" style="display: none; margin-top: 20px; background: rgba(15,23,42,0.8); border: 1px solid var(--border-highlight); border-radius: var(--radius-md); padding: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 8px;">
+          <span id="progress-status-text">Processing Frames...</span>
+          <span id="progress-pct-text">0%</span>
+        </div>
+
+        <div style="width: 100%; height: 10px; background: var(--bg-input); border-radius: var(--radius-full); overflow: hidden; position: relative;">
+          <div id="progress-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.3s ease;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;">
+          <span>Recognized Faces: <strong id="progress-rec-count" style="color: var(--success);">0</strong></span>
+          <span>Unknown Faces: <strong id="progress-unk-count" style="color: var(--warning);">0</strong></span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+        <button type="submit" id="btn-start-process" class="btn btn-primary">
+          <i data-lucide="play" style="width: 16px;"></i> Start AI Analysis
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Processing Info / Tips -->
+  <div class="glass-card">
+    <div class="card-title-bar">
+      <div class="card-title">
+        <i data-lucide="info" style="color: var(--secondary);"></i>
+        <span>CCTV Processing Guide</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px; font-size: 0.88rem; color: var(--text-muted);">
+      <div style="display: flex; gap: 12px;">
+        <div style="background: rgba(56, 189, 248, 0.1); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); flex-shrink: 0;">
+          <i data-lucide="scan" style="width: 20px;"></i>
+        </div>
+        <div>
+          <strong style="color: #fff; display: block; margin-bottom: 2px;">Multi-Face Detection</strong>
+          InsightFace deep neural network extracts 512-dimensional face feature vectors simultaneously for all individuals visible in camera frames.
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <div style="background: rgba(16, 185, 129, 0.1); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--success); flex-shrink: 0;">
+          <i data-lucide="clock" style="width: 20px;"></i>
+        </div>
+        <div>
+          <strong style="color: #fff; display: block; margin-bottom: 2px;">Timestamp & Duration Tracking</strong>
+          The system records the exact first-seen time, last-seen time, and total frame presence duration in the video stream.
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <div style="background: rgba(245, 158, 11, 0.1); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--warning); flex-shrink: 0;">
+          <i data-lucide="shield-alert" style="width: 20px;"></i>
+        </div>
+        <div>
+          <strong style="color: #fff; display: block; margin-bottom: 2px;">Unknown Face Alert Logs</strong>
+          Unrecognized faces are cropped and saved to the <strong>Unknown Faces</strong> log, where security can assign them to employees later.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Video Session History Table -->
+<div class="glass-card" style="margin-top: 24px;">
+  <div class="card-title-bar">
+    <div class="card-title">
+      <i data-lucide="history" style="color: var(--primary);"></i>
+      <span>Historical CCTV Video Processing Logs</span>
+    </div>
+  </div>
+
+  <div class="custom-table-container">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Video File</th>
+          <th>Camera Source</th>
+          <th>Attendance Date</th>
+          <th>Total / Processed Frames</th>
+          <th>Recognized</th>
+          <th>Unknown</th>
+          <th>Duration</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if sessions %}
+          {% for s in sessions %}
+            <tr>
+              <td style="font-weight: 700;">{{ s.video_name }}</td>
+              <td>{{ s.camera_name }}</td>
+              <td>{{ s.attendance_date }}</td>
+              <td>{{ s.total_frames }} / {{ s.processed_frames }}</td>
+              <td><span class="badge-status badge-present"><i data-lucide="check" style="width: 12px;"></i> {{ s.recognized_faces }}</span></td>
+              <td><span class="badge-status badge-new">{{ s.unknown_faces }}</span></td>
+              <td>{{ s.processing_time }}s</td>
+              <td><span class="badge-status badge-completed">{{ s.status }}</span></td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-subtle); padding: 30px 0;">
+              No historical video sessions found.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeSessionId = null;
+let pollTimer = null;
+
+function handleVideoFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) {
+    document.getElementById("dropzone-text").innerText = `Selected Video: ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)`;
+  }
+}
+
+document.getElementById("video-process-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const btn = document.getElementById("btn-start-process");
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 16px;"></i> Launching Background AI Video Worker...`;
+
+  const formData = new FormData(this);
+
+  try {
+    const res = await fetch("/video/process", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+
+    if (data.status) {
+      showToast("CCTV Analysis initialized in background.", "info");
+      activeSessionId = data.session_id;
+
+      document.getElementById("progress-card").style.display = "block";
+      pollStatus();
+    } else {
+      showToast(data.message || "Failed to start video processing", "error");
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+    }
+  } catch (err) {
+    showToast("Server error initiating video analysis.", "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+  }
+});
+
+async function pollStatus() {
+  if (!activeSessionId) return;
+
+  try {
+    const res = await fetch(`/api/video/status/${activeSessionId}`);
+    const data = await res.json();
+
+    if (data.status === "processing") {
+      document.getElementById("progress-bar-fill").style.width = `${data.progress}%`;
+      document.getElementById("progress-pct-text").innerText = `${data.progress}%`;
+      document.getElementById("progress-status-text").innerText = `Processing Frame ${data.current_frame} / ${data.total_frames}`;
+      document.getElementById("progress-rec-count").innerText = data.recognized_faces;
+      document.getElementById("progress-unk-count").innerText = data.unknown_faces;
+
+      pollTimer = setTimeout(pollStatus, 1500);
+    } else if (data.status === "completed") {
+      document.getElementById("progress-bar-fill").style.width = `100%`;
+      document.getElementById("progress-pct-text").innerText = `100%`;
+      document.getElementById("progress-status-text").innerText = `Completed! ${data.result.records_marked} attendance record(s) marked.`;
+      showToast("CCTV Video processing completed successfully!", "success");
+
+      const btn = document.getElementById("btn-start-process");
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+
+      setTimeout(() => window.location.reload(), 2000);
+    }
+  } catch (err) {
+    console.error("Status poll error:", err);
+  }
+}
+</script>
+{% endblock %}

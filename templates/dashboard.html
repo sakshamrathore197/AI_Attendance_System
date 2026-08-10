@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Quick Header Action Row -->
+<div class="glass-card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">CCTV Video Attendance Overview</h2>
+      <div style="font-size: 0.8rem; color: var(--text-subtle);">Automated AI Face Recognition & Camera Log Dashboard</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <a href="/api/attendance/export" class="btn btn-primary" style="font-size: 0.82rem; background: var(--success); color: #fff;">
+        <i data-lucide="download" style="width: 15px;"></i> Download CSV Report
+      </a>
+      <a href="/employees/add" class="btn btn-secondary" style="font-size: 0.82rem;">
+        <i data-lucide="user-plus" style="width: 15px;"></i> Add Employee
+      </a>
+      <a href="/video/process" class="btn btn-primary" style="font-size: 0.82rem;">
+        <i data-lucide="upload" style="width: 15px;"></i> Upload CCTV Video
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- 4 Key Stat Summary Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">Total Active Staff</div>
+      <div class="stat-value" id="stat-total-employees">--</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i data-lucide="users"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">Today's Attendance</div>
+      <div class="stat-value" id="stat-today-attendance">--</div>
+    </div>
+    <div class="stat-icon-wrapper" style="color: var(--success);">
+      <i data-lucide="user-check"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">CCTV Videos Processed</div>
+      <div class="stat-value" id="stat-videos-processed">--</div>
+    </div>
+    <div class="stat-icon-wrapper" style="color: var(--secondary);">
+      <i data-lucide="video"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">Unknown Face Alerts</div>
+      <div class="stat-value" id="stat-unknown-faces">--</div>
+    </div>
+    <div class="stat-icon-wrapper" style="color: var(--warning);">
+      <i data-lucide="alert-triangle"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Main Activity Tables Grid -->
+<div class="grid-equal-2">
+  <!-- Today's Attendance Activity -->
+  <div class="glass-card">
+    <div class="card-title-bar">
+      <div class="card-title">
+        <i data-lucide="clipboard-check" style="color: var(--success);"></i>
+        <span>Today's Verified Attendance</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <a href="/api/attendance/export" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px; color: #34d399;">
+          <i data-lucide="download" style="width: 12px;"></i> CSV
+        </a>
+        <a href="/attendance" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px;">
+          View Logs
+        </a>
+      </div>
+    </div>
+
+    <div class="custom-table-container">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Date</th>
+            <th>Camera Source</th>
+            <th>Proof</th>
+          </tr>
+        </thead>
+        <tbody id="recent-attendance-tbody">
+          <tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 20px;">Loading attendance records...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent CCTV Video Processing Sessions -->
+  <div class="glass-card">
+    <div class="card-title-bar">
+      <div class="card-title">
+        <i data-lucide="film" style="color: var(--primary);"></i>
+        <span>CCTV Processing Sessions</span>
+      </div>
+      <a href="/video/process" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px;">
+        Process New
+      </a>
+    </div>
+
+    <div class="custom-table-container">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Video / Source</th>
+            <th>Date</th>
+            <th>Recognized</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="recent-sessions-tbody">
+          <tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 20px;">Loading video sessions...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDashboardData() {
+  try {
+    const response = await fetch('/api/dashboard/stats');
+    const data = await response.json();
+
+    if (!data.success) return;
+
+    // Update Top Summary Cards
+    document.getElementById('stat-total-employees').innerText = data.total_employees;
+    document.getElementById('stat-today-attendance').innerText = `${data.today_attendance} (${data.attendance_percentage}%)`;
+    document.getElementById('stat-videos-processed').innerText = data.total_videos_processed;
+    document.getElementById('stat-unknown-faces').innerText = data.total_unknown_faces;
+
+    // Render Recent Attendance Table
+    const tbodyAttendance = document.getElementById('recent-attendance-tbody');
+    if (!data.recent_attendance || data.recent_attendance.length === 0) {
+      tbodyAttendance.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-subtle); padding: 30px 0;">No attendance records registered today.</td></tr>`;
+    } else {
+      tbodyAttendance.innerHTML = data.recent_attendance.map(a => `
+        <tr>
+          <td>
+            <div style="font-weight: 600; color: var(--text-main);">${a.employee_name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-subtle);">${a.employee_id}</div>
+          </td>
+          <td>${a.date}</td>
+          <td>
+            <span style="background: rgba(255,255,255,0.04); padding: 3px 8px; border-radius: 4px; font-weight: 600;">
+              ${a.camera_name}
+            </span>
+          </td>
+          <td>
+            ${a.screenshot ? `
+              <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showImagePreview('/static/screenshots/${a.screenshot}', 'Proof: ${a.employee_name}')">
+                <i data-lucide="image" style="width: 12px;"></i> View
+              </button>
+            ` : `<span style="color: var(--text-subtle); font-size: 0.75rem;">Manual</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Render Recent Sessions Table
+    const tbodySessions = document.getElementById('recent-sessions-tbody');
+    if (!data.recent_sessions || data.recent_sessions.length === 0) {
+      tbodySessions.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-subtle); padding: 30px 0;">No CCTV videos processed yet.</td></tr>`;
+    } else {
+      tbodySessions.innerHTML = data.recent_sessions.map(s => `
+        <tr>
+          <td>
+            <div style="font-weight: 600; color: var(--text-main);">${s.video_name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-subtle);">${s.camera_name}</div>
+          </td>
+          <td>${s.attendance_date}</td>
+          <td>
+            <span class="badge-status badge-present">
+              <i data-lucide="check" style="width: 12px;"></i> ${s.recognized_faces}
+            </span>
+          </td>
+          <td><span class="badge-status badge-completed">${s.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    if (window.lucide) lucide.createIcons();
+
+  } catch (err) {
+    console.error("Error loading dashboard stats:", err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", loadDashboardData);
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-card mb-4" style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h3 style="font-size: 1.1rem; font-weight: 700;">Unrecognized Face Detection Logs</h3>
+      <div style="font-size: 0.82rem; color: var(--text-subtle);">Review unknown face crops captured during CCTV video processing and assign them to staff profiles.</div>
+    </div>
+  </div>
+</div>
+
+{% if faces %}
+  <div class="unknown-grid">
+    {% for f in faces %}
+      <div class="unknown-card">
+        <img src="/static/uploads/unknown_faces/{{ f.image_path }}" class="unknown-img" alt="Unknown Face Crop" onerror="this.src='https://via.placeholder.com/200x180?text=No+Image';">
+        <div class="unknown-body">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span class="badge-status {% if 'Assigned' in f.status %}badge-present{% else %}badge-new{% endif %}">
+              {{ f.status }}
+            </span>
+            <span style="font-size: 0.75rem; color: var(--text-subtle);">Frame #{{ f.frame_number }}</span>
+          </div>
+
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+            Timestamp: <strong>{{ f.timestamp }}</strong>
+          </div>
+
+          {% if 'Assigned' not in f.status %}
+            <button class="btn btn-primary" style="width: 100%; justify-content: center; font-size: 0.8rem; padding: 6px 12px;" onclick="openAssignModal({{ f.id }})">
+              <i data-lucide="user-check" style="width: 14px;"></i> Assign to Employee
+            </button>
+          {% else %}
+            <div style="font-size: 0.78rem; color: var(--success); font-weight: 700; text-align: center;">Assigned</div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="glass-card" style="text-align: center; padding: 60px 20px; color: var(--text-subtle);">
+    <i data-lucide="shield-check" style="width: 48px; height: 48px; color: var(--success); margin-bottom: 12px;"></i>
+    <h3 style="color: #fff; font-weight: 700; margin-bottom: 4px;">No Unknown Face Alerts</h3>
+    <div>All faces detected in CCTV video runs have been successfully identified!</div>
+  </div>
+{% endif %}
+
+<!-- Assign Modal -->
+<div class="modal-backdrop" id="assign-modal">
+  <div class="modal-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 class="card-title"><i data-lucide="user-plus" style="color: var(--primary);"></i> Assign Unknown Face</h3>
+      <button type="button" class="btn btn-secondary" style="padding: 4px 10px;" onclick="closeModal('assign-modal')">✕</button>
+    </div>
+
+    <form id="assign-form">
+      <input type="hidden" name="face_id" id="assign-face-id">
+
+      <div class="form-group">
+        <label class="form-label">Select Registered Employee *</label>
+        <select name="employee_id" class="form-control" required>
+          <option value="">-- Choose Employee --</option>
+          {% for emp in employees %}
+            <option value="{{ emp.employee_id }}">{{ emp.name }} ({{ emp.employee_id }}) - {{ emp.department }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('assign-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Confirm Assignment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAssignModal(faceId) {
+  document.getElementById("assign-face-id").value = faceId;
+  openModal("assign-modal");
+}
+
+document.getElementById("assign-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  try {
+    const res = await fetch("/api/unknown-faces/assign", { method: "POST", body: formData });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, "success");
+      closeModal("assign-modal");
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      showToast(data.message || "Failed to assign face.", "error");
+    }
+  } catch (err) {
+    showToast("Server error during assignment.", "error");
+  }
+});
+</script>
+{% endblock %}

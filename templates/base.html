@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page_title | default('CCTV Attendance System') }}</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Sidebar Navigation -->
+  <aside class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="brand-icon">
+        <i data-lucide="video" style="width: 20px; height: 20px;"></i>
+      </div>
+      <div>
+        <div class="brand-title">CCTV Vision AI</div>
+        <div style="font-size: 0.72rem; color: var(--text-subtle); font-weight: 500;">Attendance System</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Overview</div>
+      
+      <a href="/dashboard" class="nav-item">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="/video/process" class="nav-item">
+        <i data-lucide="video"></i>
+        <span>CCTV Processor</span>
+      </a>
+
+      <a href="/attendance" class="nav-item">
+        <i data-lucide="clipboard-check"></i>
+        <span>Attendance Logs</span>
+      </a>
+
+      <div class="nav-section-title">Management</div>
+
+      <a href="/employees" class="nav-item">
+        <i data-lucide="users"></i>
+        <span>Employees Directory</span>
+      </a>
+
+      <a href="/employees/add" class="nav-item">
+        <i data-lucide="user-plus"></i>
+        <span>Add Employee</span>
+      </a>
+
+      <a href="/unknown-faces" class="nav-item">
+        <i data-lucide="shield-alert"></i>
+        <span>Unknown Faces</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span>AI Core v2.0</span>
+      <i data-lucide="cpu" style="width: 14px; color: var(--text-subtle);"></i>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <main class="app-main">
+    <!-- Topbar Header -->
+    <header class="app-topbar">
+      <h1 class="page-headline">{{ page_title | default('Dashboard') }}</h1>
+
+      <div class="topbar-right">
+        <div class="system-status-chip">
+          <div class="status-dot"></div>
+          <span>System Online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <div class="content-body">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<!-- Custom Application JS -->
+<script src="/static/js/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
