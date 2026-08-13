@@ -117,4 +117,8 @@ class VideoSession(Base):
 
     status = Column(String)
 
+    output_video_path = Column(String, nullable=True)
+
+    source_type = Column(String, default="upload")
+
     created_at = Column(DateTime, default=datetime.utcnow)

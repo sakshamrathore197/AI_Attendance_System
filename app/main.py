@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.storage import init_db
-
+import app.models
 # Initialize Database tables
 init_db()
 
@@ -11,6 +11,7 @@ os.makedirs("static/uploads/employees", exist_ok=True)
 os.makedirs("static/uploads/video", exist_ok=True)
 os.makedirs("static/uploads/unknown_faces", exist_ok=True)
 os.makedirs("static/screenshots", exist_ok=True)
+os.makedirs("static/processed_videos", exist_ok=True)
 
 app = FastAPI(
     title="AI CCTV Video Attendance System",
@@ -27,6 +28,7 @@ from app.routers.employees import router as employees_router
 from app.routers.attendance import router as attendance_router
 from app.routers.video import router as video_router
 from app.routers.unknown_faces import router as unknown_faces_router
+from app.routers.video_stream import router as video_stream_router
 
 # Include routers
 app.include_router(dashboard_router)
@@ -34,3 +36,4 @@ app.include_router(employees_router)
 app.include_router(attendance_router)
 app.include_router(video_router)
 app.include_router(unknown_faces_router)
+app.include_router(video_stream_router)

@@ -2,42 +2,62 @@
 
 {% block content %}
 <div class="grid-2">
-  <!-- CCTV Upload & Process Panel -->
+
   <div class="glass-card">
     <div class="card-title-bar">
       <div class="card-title">
         <i data-lucide="video" style="color: var(--primary);"></i>
-        <span>Upload CCTV Footage for Attendance Processing</span>
+        <span>AI Video Attendance Processing</span>
       </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+      <button type="button" class="btn btn-secondary mode-btn active" data-mode="background" onclick="switchMode('background')">
+        <i data-lucide="clock" style="width: 14px;"></i> Background Job
+      </button>
+      <button type="button" class="btn btn-secondary mode-btn" data-mode="live" onclick="switchMode('live')">
+        <i data-lucide="radio" style="width: 14px;"></i> Live Stream
+      </button>
+      <button type="button" class="btn btn-secondary mode-btn" data-mode="webcam" onclick="switchMode('webcam')">
+        <i data-lucide="camera" style="width: 14px;"></i> Webcam
+      </button>
     </div>
 
     <form id="video-process-form" enctype="multipart/form-data">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <div class="form-group">
           <label class="form-label">Camera Identifier / Location *</label>
-          <input type="text" name="camera_name" class="form-control" placeholder="e.g. Main Entrance Cam-01" required>
+          <input type="text" name="camera_name" id="camera-name" class="form-control" placeholder="e.g. Main Entrance Cam-01" required>
         </div>
 
         <div class="form-group">
           <label class="form-label">Attendance Date *</label>
-          <input type="date" name="attendance_date" class="form-control" value="{{ today_date }}" required>
+          <input type="date" name="attendance_date" id="attendance-date" class="form-control" value="{{ today_date }}" required>
         </div>
       </div>
 
-      <div class="form-group">
+
+      <div class="form-group" id="file-field-group">
         <label class="form-label">Select CCTV Video File * (MP4, AVI, MOV, MKV)</label>
-        
+
         <div class="dropzone" id="video-dropzone" onclick="document.getElementById('video-file-input').click()">
           <div class="dropzone-icon">
             <i data-lucide="upload-cloud"></i>
           </div>
           <div style="font-weight: 700; margin-bottom: 4px;" id="dropzone-text">Click to Select or Drop CCTV Footage File</div>
           <div style="font-size: 0.8rem; color: var(--text-subtle);">Supported formats: .mp4, .avi, .mov, .mkv</div>
-          <input type="file" id="video-file-input" name="video" accept="video/*" style="display: none;" required onchange="handleVideoFileSelect(event)">
+          <input type="file" id="video-file-input" name="video" accept="video/*" style="display: none;" onchange="handleVideoFileSelect(event)">
         </div>
       </div>
 
-      <!-- Real-time Progress Bar Card -->
+
+      <div class="form-group" id="webcam-field-group" style="display: none;">
+        <label class="form-label">Webcam Device Index</label>
+        <input type="number" name="camera_index" id="camera-index" class="form-control" value="0" min="0" style="max-width: 140px;">
+        <div style="font-size: 0.78rem; color: var(--text-subtle); margin-top: 4px;">0 is usually the default/built-in camera on the machine running the server.</div>
+      </div>
+
+
       <div id="progress-card" style="display: none; margin-top: 20px; background: rgba(15,23,42,0.8); border: 1px solid var(--border-highlight); border-radius: var(--radius-md); padding: 16px;">
         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 8px;">
           <span id="progress-status-text">Processing Frames...</span>
@@ -54,6 +74,20 @@
         </div>
       </div>
 
+
+      <div id="stream-wrapper" style="display: none; margin-top: 20px;">
+        <img id="live-stream" style="width: 100%; border-radius: var(--radius-md); background: #000;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 0.82rem; color: var(--text-muted);">
+          <span id="live-stats">Progress: 0% | Recognized: 0 | Unknown: 0</span>
+          <button type="button" class="btn btn-secondary" style="color: #f87171;" onclick="stopStream()">
+            <i data-lucide="square" style="width: 14px;"></i> Stop & Save
+          </button>
+        </div>
+      </div>
+
+
+      <div id="result-box" style="display: none; margin-top: 20px; background: rgba(15,23,42,0.8); border: 1px solid var(--border-highlight); border-radius: var(--radius-md); padding: 16px;"></div>
+
       <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
         <button type="submit" id="btn-start-process" class="btn btn-primary">
           <i data-lucide="play" style="width: 16px;"></i> Start AI Analysis
@@ -62,7 +96,7 @@
     </form>
   </div>
 
-  <!-- Processing Info / Tips -->
+
   <div class="glass-card">
     <div class="card-title-bar">
       <div class="card-title">
@@ -101,11 +135,21 @@
           Unrecognized faces are cropped and saved to the <strong>Unknown Faces</strong> log, where security can assign them to employees later.
         </div>
       </div>
+
+      <div style="display: flex; gap: 12px;">
+        <div style="background: rgba(168, 85, 247, 0.1); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #a855f7; flex-shrink: 0;">
+          <i data-lucide="radio" style="width: 20px;"></i>
+        </div>
+        <div>
+          <strong style="color: #fff; display: block; margin-bottom: 2px;">Background vs. Live Modes</strong>
+          <strong>Background Job</strong> processes a video behind the scenes and reports progress. <strong>Live Stream</strong> and <strong>Webcam</strong> show detection happening in real time and save the annotated footage as a recording.
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Video Session History Table -->
+
 <div class="glass-card" style="margin-top: 24px;">
   <div class="card-title-bar">
     <div class="card-title">
@@ -126,13 +170,21 @@
           <th>Unknown</th>
           <th>Duration</th>
           <th>Status</th>
+          <th>Recording</th>
         </tr>
       </thead>
       <tbody>
         {% if sessions %}
           {% for s in sessions %}
             <tr>
-              <td style="font-weight: 700;">{{ s.video_name }}</td>
+              <td style="font-weight: 700;">
+                {{ s.video_name }}
+                {% if s.source_type == 'webcam' %}
+                  <span style="margin-left:6px; font-size:0.65rem; background: rgba(96,165,250,0.15); color:#60a5fa; padding:1px 6px; border-radius:4px;">LIVE</span>
+                {% elif s.source_type == 'upload' and s.output_video_path %}
+                  <span style="margin-left:6px; font-size:0.65rem; background: rgba(168,85,247,0.15); color:#a855f7; padding:1px 6px; border-radius:4px;">STREAM</span>
+                {% endif %}
+              </td>
               <td>{{ s.camera_name }}</td>
               <td>{{ s.attendance_date }}</td>
               <td>{{ s.total_frames }} / {{ s.processed_frames }}</td>
@@ -140,11 +192,20 @@
               <td><span class="badge-status badge-new">{{ s.unknown_faces }}</span></td>
               <td>{{ s.processing_time }}s</td>
               <td><span class="badge-status badge-completed">{{ s.status }}</span></td>
+              <td>
+                {% if s.output_video_path %}
+                  <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showVideoPreview('/static/{{ s.output_video_path }}', '{{ s.video_name }}')">
+                    <i data-lucide="play" style="width: 12px;"></i> Watch
+                  </button>
+                {% else %}
+                  <span style="color: var(--text-subtle); font-size: 0.75rem;">—</span>
+                {% endif %}
+              </td>
             </tr>
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="8" style="text-align: center; color: var(--text-subtle); padding: 30px 0;">
+            <td colspan="9" style="text-align: center; color: var(--text-subtle); padding: 30px 0;">
               No historical video sessions found.
             </td>
           </tr>
@@ -157,8 +218,42 @@
 
 {% block scripts %}
 <script>
+let currentMode = "background";
 let activeSessionId = null;
 let pollTimer = null;
+let statusPoller = null;
+
+
+// Mode switching
+function switchMode(mode) {
+  currentMode = mode;
+
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+    btn.style.background = btn.dataset.mode === mode ? "var(--primary)" : "";
+    btn.style.color = btn.dataset.mode === mode ? "#fff" : "";
+  });
+
+  const fileInput = document.getElementById("video-file-input");
+  document.getElementById("file-field-group").style.display = mode === "webcam" ? "none" : "block";
+  document.getElementById("webcam-field-group").style.display = mode === "webcam" ? "block" : "none";
+  fileInput.required = mode !== "webcam";
+
+  // Reset any in-progress UI when switching modes
+  document.getElementById("progress-card").style.display = "none";
+  document.getElementById("stream-wrapper").style.display = "none";
+  document.getElementById("result-box").style.display = "none";
+
+  const btn = document.getElementById("btn-start-process");
+  btn.disabled = false;
+  btn.innerHTML = mode === "webcam"
+    ? `<i data-lucide="play" style="width: 16px;"></i> Start Webcam`
+    : mode === "live"
+      ? `<i data-lucide="play" style="width: 16px;"></i> Start Live Analysis`
+      : `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+
+  if (window.lucide) lucide.createIcons();
+}
 
 function handleVideoFileSelect(e) {
   const file = e.target.files[0];
@@ -167,41 +262,48 @@ function handleVideoFileSelect(e) {
   }
 }
 
-document.getElementById("video-process-form").addEventListener("submit", async function(e) {
+
+// Submit handler — behavior depends on currentMode
+document.getElementById("video-process-form").addEventListener("submit", async function (e) {
   e.preventDefault();
 
+  if (currentMode === "background") {
+    await startBackgroundJob(this);
+  } else if (currentMode === "live") {
+    await startLiveUpload(this);
+  } else if (currentMode === "webcam") {
+    await startWebcam(this);
+  }
+});
+
+// ----- Background Job (existing flow) --------------------------------
+async function startBackgroundJob(form) {
   const btn = document.getElementById("btn-start-process");
   btn.disabled = true;
   btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 16px;"></i> Launching Background AI Video Worker...`;
 
-  const formData = new FormData(this);
+  const formData = new FormData(form);
 
   try {
-    const res = await fetch("/video/process", {
-      method: "POST",
-      body: formData
-    });
+    const res = await fetch("/video/process", { method: "POST", body: formData });
     const data = await res.json();
 
     if (data.status) {
       showToast("CCTV Analysis initialized in background.", "info");
       activeSessionId = data.session_id;
-
       document.getElementById("progress-card").style.display = "block";
-      pollStatus();
+      pollBackgroundStatus();
     } else {
       showToast(data.message || "Failed to start video processing", "error");
-      btn.disabled = false;
-      btn.innerHTML = `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+      resetStartButton();
     }
   } catch (err) {
     showToast("Server error initiating video analysis.", "error");
-    btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+    resetStartButton();
   }
-});
+}
 
-async function pollStatus() {
+async function pollBackgroundStatus() {
   if (!activeSessionId) return;
 
   try {
@@ -215,22 +317,177 @@ async function pollStatus() {
       document.getElementById("progress-rec-count").innerText = data.recognized_faces;
       document.getElementById("progress-unk-count").innerText = data.unknown_faces;
 
-      pollTimer = setTimeout(pollStatus, 1500);
+      pollTimer = setTimeout(pollBackgroundStatus, 1500);
     } else if (data.status === "completed") {
       document.getElementById("progress-bar-fill").style.width = `100%`;
       document.getElementById("progress-pct-text").innerText = `100%`;
       document.getElementById("progress-status-text").innerText = `Completed! ${data.result.records_marked} attendance record(s) marked.`;
       showToast("CCTV Video processing completed successfully!", "success");
-
-      const btn = document.getElementById("btn-start-process");
-      btn.disabled = false;
-      btn.innerHTML = `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
-
+      resetStartButton();
       setTimeout(() => window.location.reload(), 2000);
     }
   } catch (err) {
     console.error("Status poll error:", err);
   }
 }
+
+// ----- Live Stream (uploaded video, processed in real time) ----------
+async function startLiveUpload(form) {
+  const fileInput = document.getElementById("video-file-input");
+  if (!fileInput.files[0]) {
+    showToast("Please select a video file.", "error");
+    return;
+  }
+
+  const btn = document.getElementById("btn-start-process");
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 16px;"></i> Starting Live Stream...`;
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  formData.append("camera_name", document.getElementById("camera-name").value);
+  formData.append("attendance_date", document.getElementById("attendance-date").value);
+
+  try {
+    const res = await fetch("/video/stream/prepare", { method: "POST", body: formData });
+    const data = await res.json();
+
+    if (!data.status) {
+      showToast(data.message || "Failed to start live stream.", "error");
+      resetStartButton();
+      return;
+    }
+
+    activeSessionId = data.session_id;
+    openStream(`/video/stream/live/${activeSessionId}`);
+  } catch (err) {
+    showToast("Server error starting live stream.", "error");
+    resetStartButton();
+  }
+}
+
+// ----- Webcam ----------------------------------------------------------
+async function startWebcam(form) {
+  const btn = document.getElementById("btn-start-process");
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 16px;"></i> Starting Webcam...`;
+
+  const formData = new FormData();
+  formData.append("camera_name", document.getElementById("camera-name").value);
+  formData.append("attendance_date", document.getElementById("attendance-date").value);
+  formData.append("camera_index", document.getElementById("camera-index").value || "0");
+
+  try {
+    const res = await fetch("/video/webcam/prepare", { method: "POST", body: formData });
+    const data = await res.json();
+
+    if (!data.status) {
+      showToast(data.message || "Failed to start webcam.", "error");
+      resetStartButton();
+      return;
+    }
+
+    activeSessionId = data.session_id;
+    openStream(`/video/webcam/live/${activeSessionId}`);
+  } catch (err) {
+    showToast("Server error starting webcam.", "error");
+    resetStartButton();
+  }
+}
+
+// ----- Shared live-stream helpers --------------------------------------
+function openStream(url) {
+  document.getElementById("live-stream").src = url;
+  document.getElementById("stream-wrapper").style.display = "block";
+  document.getElementById("result-box").style.display = "none";
+
+  const btn = document.getElementById("btn-start-process");
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="radio" style="width: 16px;"></i> Streaming Live...`;
+
+  statusPoller = setInterval(pollLiveStatus, 1000);
+}
+
+async function pollLiveStatus() {
+  if (!activeSessionId) return;
+
+  try {
+    const res = await fetch(`/video/stream/status/${activeSessionId}`);
+    const data = await res.json();
+
+    document.getElementById("live-stats").innerText =
+      `Progress: ${data.progress ?? 0}% | Recognized: ${data.recognized_faces ?? 0} | Unknown: ${data.unknown_faces ?? 0}`;
+
+    if (data.status === "completed") {
+      clearInterval(statusPoller);
+      showLiveResult(data.result);
+    }
+  } catch (err) {
+    console.error("Live status poll error:", err);
+  }
+}
+
+function showLiveResult(result) {
+  document.getElementById("stream-wrapper").style.display = "none";
+
+  const box = document.getElementById("result-box");
+  box.style.display = "block";
+  box.innerHTML = `
+    <div style="font-weight: 700; margin-bottom: 8px;">Session Complete</div>
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
+      Recognized: <strong style="color: var(--success);">${result.recognized_faces}</strong> |
+      Unknown: <strong style="color: var(--warning);">${result.unknown_faces}</strong> |
+      Frames processed: ${result.processed_frames}
+    </div>
+    ${result.output_video_url ? `<video controls style="width: 100%; border-radius: var(--radius-md);"><source src="${result.output_video_url}" type="video/mp4"></video>` : ""}
+  `;
+
+  showToast("Live session saved.", "success");
+  resetStartButton();
+  setTimeout(() => window.location.reload(), 2500);
+}
+
+function stopStream() {
+  if (!activeSessionId) return;
+  fetch(`/video/stream/stop/${activeSessionId}`, { method: "POST" });
+  // pollLiveStatus() will pick up "completed" once the generator finalizes and reload the page.
+}
+
+function resetStartButton() {
+  const btn = document.getElementById("btn-start-process");
+  btn.disabled = false;
+  btn.innerHTML = currentMode === "webcam"
+    ? `<i data-lucide="play" style="width: 16px;"></i> Start Webcam`
+    : currentMode === "live"
+      ? `<i data-lucide="play" style="width: 16px;"></i> Start Live Analysis`
+      : `<i data-lucide="play" style="width: 16px;"></i> Start AI Analysis`;
+  if (window.lucide) lucide.createIcons();
+}
+
+// ----- Video preview modal for the history table's "Watch" button ------
+function showVideoPreview(url, title) {
+  let modal = document.getElementById("video-preview-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "video-preview-modal";
+    modal.style.cssText = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; align-items:center; justify-content:center;";
+    modal.innerHTML = `
+      <div style="background: var(--card-bg, #16181d); padding:16px; border-radius:10px; max-width:90vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span id="video-preview-title" style="font-weight:600; color: var(--text-main);"></span>
+          <button onclick="document.getElementById('video-preview-modal').style.display='none'" class="btn btn-secondary" style="padding:2px 10px;">✕</button>
+        </div>
+        <video id="video-preview-el" controls autoplay style="max-width: 80vw; max-height: 70vh; border-radius:6px;"></video>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+  }
+  document.getElementById("video-preview-title").innerText = title || "Recording";
+  document.getElementById("video-preview-el").src = url;
+  modal.style.display = "flex";
+}
+
+// Initialize default mode styling on load
+document.addEventListener("DOMContentLoaded", () => switchMode("background"));
 </script>
 {% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Live AI Processing</h2>
+  <p>Process a video in real time, or run detection live from a webcam.</p>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <div class="tabs">
+    <button id="tab-upload" class="tab-btn active" onclick="switchTab('upload')">Upload Video</button>
+    <button id="tab-webcam" class="tab-btn" onclick="switchTab('webcam')">Webcam</button>
+  </div>
+
+
+  <div id="panel-upload" class="tab-panel">
+    <form id="upload-form">
+      <input type="file" name="file" id="video-file" accept=".mp4,.avi,.mov,.mkv" required>
+      <input type="text" name="camera_name" id="camera-name-upload" placeholder="Camera / Location" required>
+      <input type="date" name="attendance_date" id="attendance-date-upload" required>
+      <button type="submit">Start Live Analysis</button>
+    </form>
+  </div>
+
+
+  <div id="panel-webcam" class="tab-panel" style="display:none;">
+    <form id="webcam-form">
+      <input type="text" name="camera_name" id="camera-name-webcam" placeholder="Camera / Location" value="Webcam" required>
+      <input type="date" name="attendance_date" id="attendance-date-webcam" required>
+      <input type="number" name="camera_index" id="camera-index" value="0" min="0" style="width:80px;">
+      <button type="submit">Start Webcam</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div id="stream-wrapper" style="display:none;">
+    <img id="live-stream" style="width:100%; max-width:960px; border-radius:8px; background:#000;">
+    <div style="margin-top:.75rem; display:flex; gap:1rem; align-items:center;">
+      <button id="stop-btn" onclick="stopStream()">Stop & Save</button>
+      <span id="live-stats"></span>
+    </div>
+  </div>
+  <div id="result-box" style="display:none; margin-top:1rem;"></div>
+</div>
+
+<script>
+let currentSessionId = null;
+let statusPoller = null;
+
+function switchTab(tab) {
+  document.getElementById('tab-upload').classList.toggle('active', tab === 'upload');
+  document.getElementById('tab-webcam').classList.toggle('active', tab === 'webcam');
+  document.getElementById('panel-upload').style.display = tab === 'upload' ? 'block' : 'none';
+  document.getElementById('panel-webcam').style.display = tab === 'webcam' ? 'block' : 'none';
+}
+
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData();
+  formData.append('file', document.getElementById('video-file').files[0]);
+  formData.append('camera_name', document.getElementById('camera-name-upload').value);
+  formData.append('attendance_date', document.getElementById('attendance-date-upload').value);
+
+  const res = await fetch('/video/stream/prepare', { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!data.status) { alert(data.message || 'Failed to start.'); return; }
+
+  currentSessionId = data.session_id;
+  openStream(`/video/stream/live/${currentSessionId}`);
+});
+
+document.getElementById('webcam-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData();
+  formData.append('camera_name', document.getElementById('camera-name-webcam').value);
+  formData.append('attendance_date', document.getElementById('attendance-date-webcam').value);
+  formData.append('camera_index', document.getElementById('camera-index').value);
+
+  const res = await fetch('/video/webcam/prepare', { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!data.status) { alert(data.message || 'Failed to start.'); return; }
+
+  currentSessionId = data.session_id;
+  openStream(`/video/webcam/live/${currentSessionId}`);
+});
+
+function openStream(url) {
+  const img = document.getElementById('live-stream');
+  img.src = url;
+  document.getElementById('stream-wrapper').style.display = 'block';
+  document.getElementById('result-box').style.display = 'none';
+
+  statusPoller = setInterval(pollStatus, 1000);
+}
+
+async function pollStatus() {
+  if (!currentSessionId) return;
+  const res = await fetch(`/video/stream/status/${currentSessionId}`);
+  const data = await res.json();
+
+  document.getElementById('live-stats').innerText =
+    `Progress: ${data.progress ?? 0}%  |  Recognized: ${data.recognized_faces ?? 0}  |  Unknown: ${data.unknown_faces ?? 0}`;
+
+  if (data.status === 'completed') {
+    clearInterval(statusPoller);
+    showResult(data.result);
+  }
+}
+
+function showResult(result) {
+  document.getElementById('stream-wrapper').style.display = 'none';
+  const box = document.getElementById('result-box');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <h3>Session Complete</h3>
+    <p>Recognized: ${result.recognized_faces} | Unknown: ${result.unknown_faces} | Frames processed: ${result.processed_frames}</p>
+    ${result.output_video_url ? `<video controls style="width:100%; max-width:960px;"><source src="${result.output_video_url}" type="video/mp4"></video>` : ''}
+  `;
+}
+
+function stopStream() {
+  if (!currentSessionId) return;
+  fetch(`/video/stream/stop/${currentSessionId}`, { method: 'POST' });
+}
+</script>
+{% endblock %}
