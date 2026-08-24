@@ -1,0 +1,5 @@
+Source ID,Location,Direction,Simulated Brand,Protocol,Stream URI,Status,Measured FPS,Frames Received,Notes,Test Date,Compatibility Level
+SIM-01,Main Entrance,IN,Hikvision,RTSP,rtsp://localhost:8554/entrance,PASS,2.2,11,clean,2026-08-19 15:51,Simulated
+SIM-02,Main Exit,OUT,Dahua,RTSP,rtsp://localhost:8554/exit,PASS,25.1,126,clean,2026-08-19 15:51,Simulated
+SIM-03,Reception,IN,CP Plus,RTSP,rtsp://localhost:8554/reception,PASS,17.6,89,clean,2026-08-19 15:51,Simulated
+SIM-04,Parking Gate,OUT,Uniview,RTSP,rtsp://localhost:8554/parking,PASS,20.9,105,clean,2026-08-19 15:51,Simulated

@@ -6,40 +6,28 @@
     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
       <input type="text" id="attendance-search" class="form-control" placeholder="Search employee name or ID..." style="width: 240px;" onkeyup="filterAttendanceTable()">
 
-      <input type="date" name="date_val" class="form-control" value="{{ selected_date }}" style="width: 170px;" onchange="this.form.submit()">
-
-      <select name="camera" class="form-control" style="width: 180px;" onchange="this.form.submit()">
-        <option value="">All Cameras / Sources</option>
-        {% for c in cameras %}
-          <option value="{{ c }}" {% if selected_camera == c %}selected{% endif %}>{{ c }}</option>
+      <select name="date_val" class="form-control" style="width: 170px;" onchange="this.form.submit()">
+        {% for d in available_dates %}
+          <option value="{{ d }}" {% if selected_date == d %}selected{% endif %}>{{ d }}</option>
         {% endfor %}
       </select>
-
-      {% if selected_date or selected_camera %}
-        <a href="/attendance" class="btn btn-secondary" style="font-size: 0.8rem;">Clear Filters</a>
-      {% endif %}
     </div>
 
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button type="button" class="btn btn-secondary" onclick="openModal('manual-attendance-modal')">
-        <i data-lucide="plus-circle" style="width: 16px;"></i> Manual Entry
-      </button>
-
-      <a href="/api/attendance/export?date_val={{ selected_date }}&camera={{ selected_camera }}" class="btn btn-primary">
-        <i data-lucide="download" style="width: 16px;"></i> Export CSV
+      <a href="/api/attendance/export?date_val={{ selected_date }}" class="btn btn-primary">
+        <i data-lucide="download" style="width: 16px;"></i> Export Daily CSV
       </a>
     </div>
   </form>
 </div>
 
-<!-- Attendance Log Table -->
 <div class="glass-card">
   <div class="card-title-bar">
     <div class="card-title">
       <i data-lucide="clipboard-check" style="color: var(--primary);"></i>
-      <span>Verified Attendance Records</span>
+      <span>Daily Attendance Sessions & Working Duration</span>
     </div>
-    <span class="nav-badge" id="log-count-badge">{{ rows | length }} Records</span>
+    <span class="nav-badge" id="log-count-badge">{{ rows | length }} Employees</span>
   </div>
 
   <div class="custom-table-container">
@@ -49,13 +37,12 @@
           <th>Employee</th>
           <th>ID</th>
           <th>Date</th>
-          <th>Camera / Source</th>
-          <th>First Seen</th>
-          <th>Last Seen</th>
-          <th>Frames</th>
+          <th>First IN</th>
+          <th>Last OUT</th>
+          <th>IN / OUT Count</th>
+          <th>Total Working Hours</th>
           <th>Status</th>
-          <th>CCTV Snapshot Proof</th>
-          <th style="text-align: right;">Action</th>
+          <th style="text-align: right;">Timeline & Proofs</th>
         </tr>
       </thead>
       <tbody>
@@ -67,42 +54,39 @@
               </td>
               <td style="font-weight: 700; color: var(--primary);">{{ r.employee_id }}</td>
               <td>{{ r.date }}</td>
+              <td style="font-weight: 600; color: #34d399;">{{ r.first_in }}</td>
+              <td style="font-weight: 600; color: #60a5fa;">{{ r.last_out }}</td>
               <td>
-                <span style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 6px; font-weight: 600;">
-                  <i data-lucide="video" style="width: 12px; vertical-align: middle;"></i> {{ r.camera_name }}
+                <span style="font-size: 0.8rem; background: rgba(255,255,255,0.04); padding: 3px 8px; border-radius: 4px;">
+                  IN: <strong>{{ r.in_count }}</strong> | OUT: <strong>{{ r.out_count }}</strong>
                 </span>
               </td>
-              <td>{{ r.first_seen }}s</td>
-              <td>{{ r.last_seen }}s</td>
-              <td>{{ r.total_frames }}</td>
               <td>
-                {% if r.status == 'Present' %}
-                  <span class="badge-status badge-present">Present</span>
-                {% else %}
-                  <span class="badge-status badge-completed">{{ r.status }}</span>
-                {% endif %}
+                <span style="font-family: monospace; font-weight: 700; font-size: 0.9rem; color: var(--text-main);">
+                  {{ r.total_working_hours }}
+                </span>
               </td>
               <td>
-                {% if r.screenshot %}
-                  <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="showImagePreview('/static/screenshots/{{ r.screenshot }}', 'Proof: {{ r.employee_name }} - {{ r.date }}')">
-                    <i data-lucide="image" style="width: 12px;"></i> View Proof
-                  </button>
+                {% if r.status == 'Inside' %}
+                  <span class="badge-status badge-present">Inside</span>
+                {% elif r.status == 'Completed' %}
+                  <span class="badge-status badge-completed">Completed</span>
                 {% else %}
-                  <span style="color: var(--text-subtle); font-size: 0.75rem;">Manual</span>
+                  <span class="badge-status badge-new">{{ r.status }}</span>
                 {% endif %}
               </td>
               <td style="text-align: right;">
-                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteAttendanceRecord({{ r.id }})">
-                  <i data-lucide="trash-2" style="width: 12px;"></i>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="viewTimeline('{{ r.employee_id }}', '{{ r.date }}')">
+                  <i data-lucide="clock" style="width: 12px;"></i> View Timeline
                 </button>
               </td>
             </tr>
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="10" style="text-align: center; padding: 40px 0; color: var(--text-subtle);">
+            <td colspan="9" style="text-align: center; padding: 40px 0; color: var(--text-subtle);">
               <i data-lucide="clipboard-x" style="width: 32px; height: 32px; margin-bottom: 8px;"></i>
-              <div>No attendance records found for selected criteria.</div>
+              <div>No attendance records found for {{ selected_date }}.</div>
             </td>
           </tr>
         {% endif %}
@@ -111,44 +95,46 @@
   </div>
 </div>
 
-<!-- Manual Entry Modal -->
-<div class="modal-backdrop" id="manual-attendance-modal">
-  <div class="modal-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h3 class="card-title"><i data-lucide="plus-circle" style="color: var(--primary);"></i> Manual Attendance Override</h3>
-      <button type="button" class="btn btn-secondary" style="padding: 4px 10px;" onclick="closeModal('manual-attendance-modal')">✕</button>
+<!-- Employee Timeline & Proof Modal -->
+<div id="timeline-modal" class="modal-backdrop">
+  <div class="modal-card" style="max-width: 650px; max-height: 85vh; overflow-y: auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <div>
+        <h3 id="timeline-emp-name" style="font-size: 1.1rem; font-weight: 700;">Employee Timeline</h3>
+        <div id="timeline-emp-meta" style="font-size: 0.78rem; color: var(--text-subtle);">Loading...</div>
+      </div>
+      <button onclick="document.getElementById('timeline-modal').classList.remove('active')" style="background:none; border:none; color:var(--text-subtle); cursor:pointer;">
+        <i data-lucide="x" style="width: 20px;"></i>
+      </button>
     </div>
 
-    <form id="manual-form">
-      <div class="form-group">
-        <label class="form-label">Employee ID *</label>
-        <input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-101" required>
+    <!-- Summary Box -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-subtle);">First IN</div>
+        <div id="tl-first-in" style="font-weight:700; color:#34d399;">—</div>
       </div>
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-subtle);">Last OUT</div>
+        <div id="tl-last-out" style="font-weight:700; color:#60a5fa;">—</div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-subtle);">Total Working Duration</div>
+        <div id="tl-total-duration" style="font-weight:800; font-family:monospace;">—</div>
+      </div>
+    </div>
 
-      <div class="form-group">
-        <label class="form-label">Date *</label>
-        <input type="date" name="attendance_date" class="form-control" value="{{ selected_date or '' }}" required>
-      </div>
+    <!-- Intervals Section -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px;">Working Intervals</h4>
+      <div id="tl-intervals-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
 
-      <div class="form-group">
-        <label class="form-label">Camera / Location Source</label>
-        <input type="text" name="camera_name" class="form-control" value="Manual Adjustment">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select name="status" class="form-control">
-          <option value="Present">Present</option>
-          <option value="Late">Late</option>
-          <option value="Excused">Excused</option>
-        </select>
-      </div>
-
-      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('manual-attendance-modal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Record</button>
-      </div>
-    </form>
+    <!-- Chronological Events Stream -->
+    <div>
+      <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px;">Chronological Event History</h4>
+      <div id="tl-events-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -170,40 +156,80 @@ function filterAttendanceTable() {
       r.style.display = "none";
     }
   });
-  document.getElementById("log-count-badge").innerText = `${count} Records`;
+  document.getElementById("log-count-badge").innerText = `${count} Employees`;
 }
 
-document.getElementById("manual-form").addEventListener("submit", async function(e) {
-  e.preventDefault();
-  const formData = new FormData(this);
-  try {
-    const res = await fetch("/api/attendance/mark-manual", { method: "POST", body: formData });
-    const data = await res.json();
-    if (data.success) {
-      showToast(data.message, "success");
-      closeModal("manual-attendance-modal");
-      setTimeout(() => window.location.reload(), 800);
-    } else {
-      showToast(data.message || "Error saving record", "error");
-    }
-  } catch (err) {
-    showToast("Server error saving manual record.", "error");
-  }
-});
+async function viewTimeline(empId, dateVal) {
+  const modal = document.getElementById('timeline-modal');
+  modal.classList.add('active');
 
-async function deleteAttendanceRecord(id) {
-  if (!confirm("Are you sure you want to remove this attendance record?")) return;
-  const formData = new FormData();
-  formData.append("id", id);
+  document.getElementById('timeline-emp-name').innerText = 'Loading Employee Timeline...';
+  document.getElementById('timeline-emp-meta').innerText = `${empId} • ${dateVal}`;
+
   try {
-    const res = await fetch("/api/attendance/delete", { method: "POST", body: formData });
+    const res = await fetch(`/api/attendance/timeline/${empId}?date_val=${dateVal}`);
     const data = await res.json();
-    if (data.success) {
-      showToast("Record removed.", "success");
-      setTimeout(() => window.location.reload(), 600);
+
+    if (!data.success) return;
+
+    document.getElementById('timeline-emp-name').innerText = `${data.employee_name} (${data.employee_id})`;
+    document.getElementById('timeline-emp-meta').innerText = `${data.department} • Date: ${data.date} • Status: ${data.summary.current_status}`;
+
+    document.getElementById('tl-first-in').innerText = data.summary.first_in || '—';
+    document.getElementById('tl-last-out').innerText = data.summary.last_out || '—';
+    document.getElementById('tl-total-duration').innerText = data.summary.total_working_hours;
+
+    // Render Intervals
+    const invContainer = document.getElementById('tl-intervals-container');
+    if (!data.intervals || data.intervals.length === 0) {
+      invContainer.innerHTML = `<div style="color:var(--text-subtle); font-size:0.8rem;">No intervals logged yet.</div>`;
+    } else {
+      invContainer.innerHTML = data.intervals.map(inv => `
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:6px; padding:10px; font-size:0.82rem; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span><strong>IN:</strong> ${inv.in_time}</span> → <span><strong>OUT:</strong> ${inv.out_time}</span>
+            <div style="font-size:0.72rem; color:var(--text-subtle); margin-top:2px;">Camera IN: ${inv.in_camera_id || '—'} | Camera OUT: ${inv.out_camera_id || '—'}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700; font-family:monospace; color:var(--primary);">${inv.duration}</div>
+            ${inv.in_proof ? `
+              <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.68rem; margin-top:2px;" onclick="showImagePreview('/static/screenshots/${inv.in_proof}', 'Proof IN')">IN Proof</button>
+            ` : ''}
+            ${inv.out_proof ? `
+              <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.68rem; margin-top:2px;" onclick="showImagePreview('/static/screenshots/${inv.out_proof}', 'Proof OUT')">OUT Proof</button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
     }
-  } catch (e) {
-    showToast("Error deleting record.", "error");
+
+    // Render Chronological Events
+    const evContainer = document.getElementById('tl-events-container');
+    if (!data.events || data.events.length === 0) {
+      evContainer.innerHTML = `<div style="color:var(--text-subtle); font-size:0.8rem;">No raw events logged.</div>`;
+    } else {
+      evContainer.innerHTML = data.events.map(ev => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:rgba(255,255,255,0.02); border-radius:6px; font-size:0.8rem;">
+          <div>
+            <strong>${ev.event_time}</strong> — <span style="color:${ev.event_type === 'IN' ? '#34d399' : '#60a5fa'}; font-weight:700;">${ev.event_type}</span>
+            <span style="font-size:0.72rem; color:var(--text-subtle); margin-left:6px;">(${ev.camera_name})</span>
+            ${ev.is_duplicate ? `<span style="font-size:0.65rem; background:rgba(245,158,11,0.15); color:#fcd34d; padding:1px 4px; border-radius:3px; margin-left:4px;">Duplicate</span>` : ''}
+            ${ev.is_unexpected ? `<span style="font-size:0.65rem; background:rgba(239,68,68,0.15); color:#fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">Unexpected</span>` : ''}
+          </div>
+          <div>
+            <span style="font-size:0.72rem; color:var(--text-subtle); margin-right:8px;">Score: ${ev.similarity_score}</span>
+            ${ev.screenshot ? `
+              <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.68rem;" onclick="showImagePreview('/static/screenshots/${ev.screenshot}', 'Event Proof')">Proof</button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    if (window.lucide) lucide.createIcons();
+
+  } catch (err) {
+    console.error('Timeline fetch error:', err);
   }
 }
 </script>

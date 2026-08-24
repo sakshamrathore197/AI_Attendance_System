@@ -1,0 +1,30 @@
+# mediamtx.yml
+# Lab 1 - Four-Source Virtual Camera Lab
+# Minimal MediaMTX config: defines 4 RTSP paths that our ffmpeg publishers
+# will push sample footage into. No external network access required —
+# everything runs on localhost.
+
+# Default ports (leave as-is unless something else on your machine uses them)
+rtspAddress: :8554
+webrtcAddress: :8889
+hlsAddress: :8888
+apiAddress: :9997
+api: yes
+metrics: no
+
+paths:
+  entrance:
+    # publisher: ffmpeg pushes entrance_hikvision_sim.mp4 here on loop
+    source: publisher
+
+  exit:
+    # publisher: ffmpeg pushes exit_dahua_sim.mp4 here on loop
+    source: publisher
+
+  reception:
+    # publisher: ffmpeg pushes reception_cpplus_sim.mp4 here on loop
+    source: publisher
+
+  parking:
+    # publisher: ffmpeg pushes parking_uniview_sim.mp4 here on loop
+    source: publisher

@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Camera Management & Health Monitor</h2>
+      <div style="font-size: 0.8rem; color: var(--text-subtle);">Configure, test connectivity, and monitor active Webcams and RTSP/IP cameras</div>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="openAddModal()">
+        <i data-lucide="plus-circle" style="width: 16px;"></i> Add New Camera
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Cameras Grid -->
+<div id="camera-cards-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+  {% for cam in cameras %}
+  <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 34px; height: 34px; border-radius: var(--radius-md); background: rgba(59, 130, 246, 0.15); display:flex; align-items:center; justify-content:center; color: var(--primary);">
+            <i data-lucide="video" style="width: 18px;"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 0.95rem; font-weight: 700;">{{ cam.camera_name }}</h3>
+            <span style="font-size: 0.72rem; color: var(--text-subtle);">ID: {{ cam.camera_id }}</span>
+          </div>
+        </div>
+
+        <span class="badge-status {% if cam.status == 'Connected' %}badge-present{% elif cam.status == 'Error' %}badge-absent{% else %}badge-new{% endif %}">
+          {{ cam.status }}
+        </span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; font-size: 0.8rem;">
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px;">
+          <div style="color: var(--text-subtle); font-size: 0.7rem;">Direction</div>
+          <div style="font-weight: 700; color: {% if cam.direction == 'IN' %}var(--success){% elif cam.direction == 'OUT' %}#60a5fa{% else %}var(--warning){% endif %};">
+            {{ cam.direction }} Camera
+          </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px;">
+          <div style="color: var(--text-subtle); font-size: 0.7rem;">Source Type</div>
+          <div style="font-weight: 600; text-transform: uppercase;">{{ cam.camera_type }}</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; grid-column: span 2;">
+          <div style="color: var(--text-subtle); font-size: 0.7rem;">Location</div>
+          <div style="font-weight: 600;">{{ cam.location }}</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; grid-column: span 2;">
+          <div style="color: var(--text-subtle); font-size: 0.7rem;">URL / Index</div>
+          <div style="font-family: monospace; font-size: 0.78rem; word-break: break-all;">{{ cam.url_or_index }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size: 0.72rem; color: var(--text-subtle); margin-bottom: 12px; display:flex; justify-content:space-between;">
+        <span>Last Connected: {{ cam.last_connected_time }}</span>
+        <span>FPS: {{ cam.fps }}</span>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="testCameraCard('{{ cam.camera_type }}', '{{ cam.url_or_index }}')">
+          <i data-lucide="zap" style="width: 14px;"></i> Test
+        </button>
+        <button class="btn btn-danger" style="padding: 8px 12px;" onclick="deleteCamera('{{ cam.camera_id }}')">
+          <i data-lucide="trash-2" style="width: 14px;"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="glass-card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+    <div style="color: var(--text-subtle); font-size: 0.9rem;">No cameras configured. Click "Add New Camera" to register webcams or RTSP streams.</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Add / Edit Camera Modal -->
+<div id="camera-modal" class="modal-backdrop">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px;">
+      <h3 style="font-size: 1.1rem; font-weight:700;">Add New Camera</h3>
+      <button onclick="closeModal()" style="background:none; border:none; color:var(--text-subtle); cursor:pointer;">
+        <i data-lucide="x" style="width: 20px;"></i>
+      </button>
+    </div>
+
+    <form id="camera-form" onsubmit="saveCamera(event)">
+      <div class="form-group">
+        <label class="form-label">Camera Unique ID *</label>
+        <input type="text" id="input-cam-id" class="form-control" placeholder="e.g. cam_entrance_01" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Camera Name *</label>
+        <input type="text" id="input-cam-name" class="form-control" placeholder="e.g. Main Entrance Gate" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Camera Type</label>
+          <select id="input-cam-type" class="form-control" onchange="toggleSourceInput()">
+            <option value="webcam">Webcam</option>
+            <option value="rtsp">RTSP / IP Camera</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Direction Type</label>
+          <select id="input-cam-direction" class="form-control">
+            <option value="IN">IN Camera</option>
+            <option value="OUT">OUT Camera</option>
+            <option value="General">General Monitoring</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" id="label-source">Webcam Index (0, 1, 2...)</label>
+        <input type="text" id="input-cam-source" class="form-control" value="0" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input type="text" id="input-cam-location" class="form-control" placeholder="e.g. Building A - Front Door">
+      </div>
+
+      <div id="test-result-box" style="display:none; margin-bottom:16px; padding:10px 14px; border-radius:6px; font-size:0.8rem;"></div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="testModalCamera()">
+          <i data-lucide="zap" style="width:14px;"></i> Test Connection
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="check" style="width:14px;"></i> Save Camera
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAddModal() {
+  document.getElementById('camera-form').reset();
+  document.getElementById('test-result-box').style.display = 'none';
+  document.getElementById('camera-modal').classList.add('active');
+  toggleSourceInput();
+}
+
+function closeModal() {
+  document.getElementById('camera-modal').classList.remove('active');
+}
+
+function toggleSourceInput() {
+  const type = document.getElementById('input-cam-type').value;
+  const label = document.getElementById('label-source');
+  const sourceInput = document.getElementById('input-cam-source');
+  if (type === 'webcam') {
+    label.innerText = 'Webcam Index (e.g. 0, 1, 2)';
+    sourceInput.placeholder = '0';
+  } else {
+    label.innerText = 'RTSP / Stream URL (rtsp://...)';
+    sourceInput.placeholder = 'rtsp://admin:pass@192.168.1.100:554/stream1';
+  }
+}
+
+async function testModalCamera() {
+  const type = document.getElementById('input-cam-type').value;
+  const source = document.getElementById('input-cam-source').value;
+  const resultBox = document.getElementById('test-result-box');
+
+  resultBox.style.display = 'block';
+  resultBox.style.background = 'rgba(59, 130, 246, 0.1)';
+  resultBox.style.color = '#60a5fa';
+  resultBox.innerText = 'Testing connectivity...';
+
+  const formData = new FormData();
+  formData.append('camera_type', type);
+  formData.append('url_or_index', source);
+
+  try {
+    const res = await fetch('/api/cameras/test', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.status) {
+      resultBox.style.background = 'rgba(16, 185, 129, 0.15)';
+      resultBox.style.color = '#34d399';
+      resultBox.innerText = '✓ ' + data.message;
+    } else {
+      resultBox.style.background = 'rgba(239, 68, 68, 0.15)';
+      resultBox.style.color = '#fca5a5';
+      resultBox.innerText = '✕ ' + data.message;
+    }
+  } catch (err) {
+    resultBox.style.background = 'rgba(239, 68, 68, 0.15)';
+    resultBox.style.color = '#fca5a5';
+    resultBox.innerText = '✕ Error testing camera connectivity.';
+  }
+}
+
+async function testCameraCard(type, source) {
+  alert('Testing connectivity to ' + type.toUpperCase() + ' (' + source + ')...');
+  const formData = new FormData();
+  formData.append('camera_type', type);
+  formData.append('url_or_index', source);
+
+  try {
+    const res = await fetch('/api/cameras/test', { method: 'POST', body: formData });
+    const data = await res.json();
+    alert(data.message);
+  } catch (err) {
+    alert('Test failed.');
+  }
+}
+
+async function saveCamera(e) {
+  e.preventDefault();
+  const formData = new FormData();
+  formData.append('camera_id', document.getElementById('input-cam-id').value);
+  formData.append('camera_name', document.getElementById('input-cam-name').value);
+  formData.append('camera_type', document.getElementById('input-cam-type').value);
+  formData.append('direction', document.getElementById('input-cam-direction').value);
+  formData.append('url_or_index', document.getElementById('input-cam-source').value);
+  formData.append('location', document.getElementById('input-cam-location').value);
+
+  const res = await fetch('/api/cameras', { method: 'POST', body: formData });
+  const data = await res.json();
+
+  if (data.status) {
+    closeModal();
+    window.location.reload();
+  } else {
+    alert(data.message || 'Failed to save camera.');
+  }
+}
+
+async function deleteCamera(camId) {
+  if (!confirm(`Are you sure you want to delete camera '${camId}'?`)) return;
+
+  const res = await fetch(`/api/cameras/${camId}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.status) {
+    window.location.reload();
+  } else {
+    alert(data.message || 'Failed to delete camera.');
+  }
+}
+</script>
+{% endblock %}

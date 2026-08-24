@@ -2,18 +2,26 @@ from datetime import datetime, date
 from app.database import SessionLocal
 from app.models import Attendance
 
+
 class AttendanceManager:
     def __init__(self, camera_name: str = None, attendance_date: str = None):
         self.records = {}
-        if camera_name and attendance_date:
-            self.load_existing(camera_name, attendance_date)
+        if attendance_date:
+            self.load_existing(attendance_date)
 
-    def load_existing(self, camera_name: str, attendance_date: str):
+    def load_existing(self, attendance_date: str):
+        """
+        Preload everyone already marked present today, across ALL cameras.
+        These are kept only as reference (seen_this_session=False) so that,
+        if the same person is later re-detected in this run, we know their
+        true original first_seen/screenshot instead of resetting them.
+        Rows that are never re-detected in this session are NOT written
+        back to the DB (see get_records()).
+        """
         db = SessionLocal()
         try:
             existing_records = db.query(Attendance).filter(
-                Attendance.date == attendance_date,
-                Attendance.camera_name == camera_name
+                Attendance.date == attendance_date
             ).all()
 
             for rec in existing_records:
@@ -24,7 +32,8 @@ class AttendanceManager:
                     "last_seen": rec.last_seen,
                     "frames": rec.total_frames or 1,
                     "status": rec.status or "Present",
-                    "screenshot": rec.screenshot or ""
+                    "screenshot": rec.screenshot or "",
+                    "seen_this_session": False,
                 }
         except Exception as e:
             print(f"Error loading existing attendance: {e}")
@@ -33,21 +42,29 @@ class AttendanceManager:
 
     def mark(self, employee, frame_no, fps, screenshot_filename=""):
         timestamp = round(frame_no / fps, 2) if fps > 0 else 0.0
-
         emp_id = employee["employee_id"]
-        if emp_id not in self.records:
+
+        prior = self.records.get(emp_id)
+
+        if not prior or not prior.get("seen_this_session"):
+
             self.records[emp_id] = {
                 "employee_id": emp_id,
                 "name": employee["name"],
-                "first_seen": timestamp,
+                "first_seen": prior["first_seen"] if prior else timestamp,
                 "last_seen": timestamp,
                 "frames": 1,
                 "status": "Present",
-                "screenshot": screenshot_filename or f"{emp_id}_{frame_no}.jpg"
+                "screenshot": (prior["screenshot"] if prior and prior.get("screenshot") else None)
+                              or screenshot_filename or f"{emp_id}_{frame_no}.jpg",
+                "seen_this_session": True,
             }
-            print(f"✅ Attendance Marked: {emp_id} - {employee['name']}")
+            if prior:
+                print(f"🔁 Re-detected (different session/camera): {emp_id} - {employee['name']}")
+            else:
+                print(f"✅ Attendance Marked: {emp_id} - {employee['name']}")
         else:
-            # Update last_seen continuously whenever person appears again
+            # Same person seen again within this same processing run.
             if timestamp > self.records[emp_id]["last_seen"]:
                 self.records[emp_id]["last_seen"] = timestamp
             self.records[emp_id]["frames"] += 1
@@ -55,22 +72,21 @@ class AttendanceManager:
                 self.records[emp_id]["screenshot"] = screenshot_filename
 
     def get_records(self):
-        return list(self.records.values())
+        return [r for r in self.records.values() if r.get("seen_this_session")]
 
     def save(self, camera_name, attendance_date):
         db = SessionLocal()
         try:
-            for record in self.records.values():
+            for record in self.get_records():
                 existing = db.query(Attendance).filter(
                     Attendance.employee_id == record["employee_id"],
-                    Attendance.date == attendance_date,
-                    Attendance.camera_name == camera_name
+                    Attendance.date == attendance_date
                 ).first()
+
                 if existing:
+                    
                     existing.last_seen = record["last_seen"]
-                    existing.total_frames = record["frames"]
-                    if record["screenshot"] and not existing.screenshot:
-                        existing.screenshot = record["screenshot"]
+                    existing.camera_name = camera_name
                 else:
                     db.add(
                         Attendance(

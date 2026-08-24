@@ -41,7 +41,7 @@ An automated, AI-powered Face Recognition Attendance System built with **FastAPI
 
 - **Backend**: Python 3.10+, FastAPI, Uvicorn, SQLAlchemy, SQLite
 - **AI & Computer Vision**: InsightFace (`buffalo_l`), OpenCV, NumPy
-- **Frontend**: HTML5, CSS3 (Enterprise Slate Design System), JavaScript, Lucide Icons
+- **Frontend**: HTML5, CSS3 , JavaScript
 
 ---
 

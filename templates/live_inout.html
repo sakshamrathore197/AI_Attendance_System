@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Live Stream Monitoring & Attendance Engine</h2>
+      <div style="font-size: 0.8rem; color: var(--text-subtle);">Real-time multi-camera processing (Webcams & RTSP streams) with live visual overlays</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <select id="camera-select" class="form-control" style="width: auto;">
+        <option value="">Loading cameras...</option>
+      </select>
+      <button id="btn-start" class="btn btn-primary" onclick="startMonitoring()">
+        <i data-lucide="play" style="width: 15px;"></i> Start Monitoring
+      </button>
+      <button id="btn-stop" class="btn btn-secondary" style="display:none; color:#f87171;" onclick="stopMonitoring()">
+        <i data-lucide="square" style="width: 15px;"></i> Stop Monitoring
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Live Video + Overlay -->
+  <div class="glass-card">
+    <div class="card-title-bar">
+      <div class="card-title">
+        <i data-lucide="camera" style="color: var(--primary);"></i>
+        <span id="active-camera-label">No camera selected</span>
+      </div>
+      <span id="connection-badge" class="badge-status badge-new">Disconnected</span>
+    </div>
+
+    <div style="background:#000; border-radius: var(--radius-md); overflow:hidden; min-height: 340px; display:flex; align-items:center; justify-content:center; position:relative;">
+      <img id="live-stream" style="width: 100%; height:auto; display:none;">
+      <span id="stream-placeholder" style="color: var(--text-subtle); font-size: 0.85rem;">Stream will appear here once monitoring starts</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px;">
+      <div class="stat-mini" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
+        <div class="stat-label" style="font-size:0.7rem; color: var(--text-subtle);">Current FPS</div>
+        <div class="stat-value" id="stat-fps" style="font-size:1.3rem; font-weight:800;">0</div>
+      </div>
+      <div class="stat-mini" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
+        <div class="stat-label" style="font-size:0.7rem; color: var(--text-subtle);">Faces Detected</div>
+        <div class="stat-value" id="stat-faces" style="font-size:1.3rem; font-weight:800;">0</div>
+      </div>
+      <div class="stat-mini" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
+        <div class="stat-label" style="font-size:0.7rem; color: var(--text-subtle);">Employees Recognized</div>
+        <div class="stat-value" id="stat-recognized" style="font-size:1.3rem; font-weight:800; color:#34d399;">0</div>
+      </div>
+      <div class="stat-mini" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
+        <div class="stat-label" style="font-size:0.7rem; color: var(--text-subtle);">Unknown Faces</div>
+        <div class="stat-value" id="stat-unknown" style="font-size:1.3rem; font-weight:800; color:var(--warning);">0</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+      <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 8px; padding: 10px 14px;">
+        <div style="font-size: 0.72rem; color: var(--text-subtle);">Latest IN Event</div>
+        <div id="latest-in" style="font-weight: 600; color: var(--success);">—</div>
+      </div>
+      <div style="background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.25); border-radius: 8px; padding: 10px 14px;">
+        <div style="font-size: 0.72rem; color: var(--text-subtle);">Latest OUT Event</div>
+        <div id="latest-out" style="font-weight: 600; color: #60a5fa;">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Currently Inside + Live Events -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    <div class="glass-card">
+      <div class="card-title-bar">
+        <div class="card-title">
+          <i data-lucide="users" style="color: var(--success);"></i>
+          <span>Currently Inside Premises</span>
+        </div>
+      </div>
+      <div class="custom-table-container">
+        <table class="custom-table">
+          <thead>
+            <tr><th>Employee</th><th>Department</th><th>Last IN Time</th><th>Duration</th></tr>
+          </thead>
+          <tbody id="currently-inside-tbody">
+            <tr><td colspan="4" style="text-align:center; color: var(--text-subtle); padding: 16px;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="card-title-bar">
+        <div class="card-title">
+          <i data-lucide="activity" style="color: var(--secondary);"></i>
+          <span>Live Recent Attendance Events</span>
+        </div>
+      </div>
+      <div id="live-events-list" style="display:flex; flex-direction:column; gap:8px; max-height: 320px; overflow-y:auto;">
+        <div style="text-align:center; color: var(--text-subtle); padding: 16px; font-size: 0.85rem;">No events yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeSessionId = null;
+let statusPoller = null;
+let sidePoller = null;
+
+async function loadCameraDropdown() {
+  try {
+    const res = await fetch('/inout/cameras');
+    const data = await res.json();
+    const select = document.getElementById('camera-select');
+
+    if (data.status && data.cameras.length > 0) {
+      select.innerHTML = data.cameras.map(c => `
+        <option value="${c.camera_id}">${c.camera_name} (${c.direction} - ${c.camera_type.toUpperCase()})</option>
+      `).join('');
+    } else {
+      select.innerHTML = `<option value="">No active cameras found</option>`;
+    }
+  } catch (err) {
+    console.error('Error loading camera list:', err);
+  }
+}
+
+async function startMonitoring() {
+  const cameraId = document.getElementById('camera-select').value;
+  if (!cameraId) { alert('Please select a camera.'); return; }
+  const cameraLabel = document.getElementById('camera-select').selectedOptions[0].text;
+
+  const formData = new FormData();
+  formData.append('camera_id', cameraId);
+
+  const res = await fetch('/video/inout/start', { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!data.status) { alert(data.message || 'Failed to start monitoring.'); return; }
+
+  activeSessionId = data.session_id;
+
+  document.getElementById('active-camera-label').innerText = cameraLabel;
+  document.getElementById('live-stream').src = `/video/inout/live/${activeSessionId}`;
+  document.getElementById('live-stream').style.display = 'block';
+  document.getElementById('stream-placeholder').style.display = 'none';
+  document.getElementById('connection-badge').innerText = 'Connected';
+  document.getElementById('connection-badge').className = 'badge-status badge-present';
+
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  document.getElementById('camera-select').disabled = true;
+
+  statusPoller = setInterval(pollStatus, 1000);
+  if (window.lucide) lucide.createIcons();
+}
+
+function stopMonitoring() {
+  if (!activeSessionId) return;
+  fetch(`/video/inout/stop/${activeSessionId}`, { method: 'POST' });
+}
+
+async function pollStatus() {
+  if (!activeSessionId) return;
+
+  const res = await fetch(`/video/inout/status/${activeSessionId}`);
+  const data = await res.json();
+
+  if (data.status === 'processing') {
+    document.getElementById('stat-fps').innerText = data.current_fps ?? 0;
+    document.getElementById('stat-faces').innerText = data.faces_detected ?? 0;
+    document.getElementById('stat-recognized').innerText = data.employees_recognized ?? 0;
+    document.getElementById('stat-unknown').innerText = data.unknown_faces ?? 0;
+
+    if (data.latest_in_event) {
+      document.getElementById('latest-in').innerText = `${data.latest_in_event.employee_name} @ ${data.latest_in_event.time}`;
+    }
+    if (data.latest_out_event) {
+      document.getElementById('latest-out').innerText = `${data.latest_out_event.employee_name} @ ${data.latest_out_event.time}`;
+    }
+  } else if (data.status === 'completed' || data.status === 'failed') {
+    clearInterval(statusPoller);
+    resetMonitoringUI();
+    if (data.status === 'failed') {
+      alert(data.message || 'Stream ended unexpectedly.');
+    }
+  }
+}
+
+function resetMonitoringUI() {
+  activeSessionId = null;
+  document.getElementById('live-stream').style.display = 'none';
+  document.getElementById('live-stream').src = '';
+  document.getElementById('stream-placeholder').style.display = 'block';
+  document.getElementById('connection-badge').innerText = 'Disconnected';
+  document.getElementById('connection-badge').className = 'badge-status badge-new';
+  document.getElementById('btn-start').style.display = 'inline-flex';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('camera-select').disabled = false;
+}
+
+async function refreshSidePanels() {
+  try {
+    const [insideRes, eventsRes] = await Promise.all([
+      fetch('/video/inout/currently-inside'),
+      fetch('/video/inout/events?limit=15'),
+    ]);
+    const insideData = await insideRes.json();
+    const eventsData = await eventsRes.json();
+
+    const insideTbody = document.getElementById('currently-inside-tbody');
+    if (!insideData.employees || insideData.employees.length === 0) {
+      insideTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-subtle); padding: 16px;">No one is currently inside.</td></tr>`;
+    } else {
+      insideTbody.innerHTML = insideData.employees.map(e => `
+        <tr>
+          <td><div style="font-weight:600;">${e.employee_name}</div><div style="font-size:0.72rem; color:var(--text-subtle);">${e.employee_id}</div></td>
+          <td>${e.department || 'General'}</td>
+          <td>${e.last_in_time || '—'}</td>
+          <td><span class="badge-status badge-present">${e.duration_since_in || '0m'}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    const eventsList = document.getElementById('live-events-list');
+    if (!eventsData.events || eventsData.events.length === 0) {
+      eventsList.innerHTML = `<div style="text-align:center; color: var(--text-subtle); padding: 16px; font-size: 0.85rem;">No events yet</div>`;
+    } else {
+      eventsList.innerHTML = eventsData.events.map(e => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background: rgba(255,255,255,0.03); border-radius:6px; font-size:0.82rem;">
+          <span>
+            <strong>${e.event_time}</strong> — ${e.employee_name}
+            <span style="color:${e.event_type === 'IN' ? 'var(--success)' : '#60a5fa'}; font-weight:700;"> ${e.event_type}</span>
+          </span>
+          <span style="color: var(--text-subtle); font-size: 0.75rem;">${e.camera_name}</span>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    console.error('Side panel refresh error:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadCameraDropdown();
+  refreshSidePanels();
+  sidePoller = setInterval(refreshSidePanels, 5000);
+});
+</script>
+{% endblock %}
+

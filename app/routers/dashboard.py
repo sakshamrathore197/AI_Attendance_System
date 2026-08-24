@@ -2,13 +2,16 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
 from app.database import get_db
-from app.models import Employee, Attendance, VideoSession, UnknownFace
+from app.models import Employee, Attendance, VideoSession, UnknownFace, AttendanceSession, AttendanceEvent, Camera
+from app.services.inout_engine import InOutEngine, get_recent_events
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+inout_engine = InOutEngine()
+
 
 @router.get("/")
 @router.get("/dashboard")
@@ -18,6 +21,7 @@ def dashboard_page(request: Request):
         {"request": request, "page_title": "Executive Dashboard"}
     )
 
+
 @router.get("/api/dashboard/stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
     today_str = str(date.today())
@@ -25,13 +29,37 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     total_employees = db.query(Employee).filter(Employee.status == "Active").count()
     total_staff_all = db.query(Employee).count()
 
-    today_attendance_count = db.query(func.count(func.distinct(Attendance.employee_id)))\
-        .filter(Attendance.date == today_str).scalar() or 0
+    # Present Today: employees with session row or attendance row today
+    present_today = db.query(func.count(func.distinct(AttendanceSession.employee_id)))\
+        .filter(AttendanceSession.date == today_str).scalar() or 0
+    if present_today == 0:
+        present_today = db.query(func.count(func.distinct(Attendance.employee_id)))\
+            .filter(Attendance.date == today_str).scalar() or 0
 
-    attendance_pct = round((today_attendance_count / total_employees * 100), 1) if total_employees > 0 else 0
+    attendance_pct = round((present_today / total_employees * 100), 1) if total_employees > 0 else 0
+
+    currently_inside_rows = inout_engine.get_currently_inside()
+    currently_inside_count = len(currently_inside_rows)
+    currently_outside_count = max(0, total_employees - currently_inside_count)
+
+    in_events_today = db.query(AttendanceEvent).filter(
+        AttendanceEvent.event_date == today_str,
+        AttendanceEvent.event_type == "IN",
+        AttendanceEvent.is_duplicate == 0
+    ).count()
+
+    out_events_today = db.query(AttendanceEvent).filter(
+        AttendanceEvent.event_date == today_str,
+        AttendanceEvent.event_type == "OUT",
+        AttendanceEvent.is_duplicate == 0
+    ).count()
 
     total_videos_processed = db.query(VideoSession).count()
     total_unknown_faces = db.query(UnknownFace).filter(UnknownFace.status == "New").count()
+
+    active_cameras = db.query(Camera).filter(Camera.status == "Connected").count()
+    camera_errors = db.query(Camera).filter(Camera.status == "Error").count()
+    total_cameras = db.query(Camera).count()
 
     # Attendance trend (last 7 days)
     trend_labels = []
@@ -39,8 +67,11 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     for i in range(6, -1, -1):
         day = date.today() - timedelta(days=i)
         day_str = str(day)
-        count = db.query(func.count(func.distinct(Attendance.employee_id)))\
-            .filter(Attendance.date == day_str).scalar() or 0
+        count = db.query(func.count(func.distinct(AttendanceSession.employee_id)))\
+            .filter(AttendanceSession.date == day_str).scalar() or 0
+        if count == 0:
+            count = db.query(func.count(func.distinct(Attendance.employee_id)))\
+                .filter(Attendance.date == day_str).scalar() or 0
         trend_labels.append(day.strftime("%b %d"))
         trend_data.append(count)
 
@@ -48,52 +79,61 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     dept_counts = db.query(Employee.department, func.count(Employee.id))\
         .filter(Employee.status == "Active")\
         .group_by(Employee.department).all()
-    
+
     dept_labels = [dept if dept else "General" for dept, _ in dept_counts]
     dept_data = [count for _, count in dept_counts]
 
-    # Recent Video Sessions
-    recent_sessions_db = db.query(VideoSession).order_by(VideoSession.id.desc()).limit(5).all()
-    recent_sessions = []
-    for s in recent_sessions_db:
-        recent_sessions.append({
-            "id": s.id,
-            "video_name": s.video_name,
-            "camera_name": s.camera_name,
-            "attendance_date": s.attendance_date,
-            "recognized_faces": s.recognized_faces,
-            "unknown_faces": s.unknown_faces,
-            "status": s.status,
-            "processing_time": s.processing_time,
-            "created_at": s.created_at.strftime("%Y-%m-%d %H:%M") if s.created_at else ""
-        })
+    # Recent Attendance Events / Activity
+    recent_events = get_recent_events(10)
+    if not recent_events:
+        recent_attendance_db = db.query(Attendance).order_by(Attendance.id.desc()).limit(8).all()
+        recent_events = [
+            {
+                "employee_id": a.employee_id,
+                "employee_name": a.employee_name,
+                "event_type": "IN",
+                "event_date": a.date,
+                "event_time": f"{int(a.first_seen)//60:02d}:{int(a.first_seen)%60:02d}",
+                "camera_name": a.camera_name,
+            }
+            for a in recent_attendance_db
+        ]
 
-    # Recent Attendance Activity
-    recent_attendance_db = db.query(Attendance).order_by(Attendance.id.desc()).limit(8).all()
-    recent_attendance = []
-    for a in recent_attendance_db:
-        recent_attendance.append({
-            "id": a.id,
-            "employee_id": a.employee_id,
-            "employee_name": a.employee_name,
-            "date": a.date,
-            "camera_name": a.camera_name,
-            "status": a.status,
-            "screenshot": a.screenshot
-        })
+    # Camera status breakdown
+    cameras_db = db.query(Camera).all()
+    camera_list = [
+        {
+            "id": c.camera_id,
+            "name": c.camera_name,
+            "direction": c.direction,
+            "status": c.status,
+            "location": c.location,
+            "fps": c.fps or 0,
+        }
+        for c in cameras_db
+    ]
 
     return {
         "success": True,
         "total_employees": total_employees,
         "total_staff_all": total_staff_all,
-        "today_attendance": today_attendance_count,
+        "today_attendance": present_today,
         "attendance_percentage": attendance_pct,
+        "currently_inside": currently_inside_count,
+        "currently_outside": currently_outside_count,
+        "in_events_today": in_events_today,
+        "out_events_today": out_events_today,
         "total_videos_processed": total_videos_processed,
         "total_unknown_faces": total_unknown_faces,
+        "active_cameras": active_cameras,
+        "camera_errors": camera_errors,
+        "total_cameras": total_cameras,
         "trend_labels": trend_labels,
         "trend_data": trend_data,
         "dept_labels": dept_labels,
         "dept_data": dept_data,
-        "recent_sessions": recent_sessions,
-        "recent_attendance": recent_attendance
+        "currently_inside_list": currently_inside_rows,
+        "recent_events": recent_events,
+        "cameras": camera_list,
     }
+

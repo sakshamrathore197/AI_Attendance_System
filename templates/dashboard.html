@@ -1,57 +1,79 @@
 {% extends "base.html" %}
 
 {% block content %}
-
+<!-- Quick Header Action Row -->
 <div class="glass-card" style="margin-bottom: 24px; padding: 18px 24px;">
   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
     <div>
-      <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">CCTV Video Attendance Overview</h2>
-      <div style="font-size: 0.8rem; color: var(--text-subtle);">Automated AI Face Recognition & Camera Log Dashboard</div>
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Executive Real-Time Live Attendance Dashboard</h2>
+      <div style="font-size: 0.8rem; color: var(--text-subtle);">Real-time monitoring, multi-camera tracking, attendance sessions, and employee durations</div>
     </div>
 
     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <a href="/video/inout" class="btn btn-primary" style="font-size: 0.82rem; background: var(--secondary);">
+        <i data-lucide="video" style="width: 15px;"></i> Live Stream Page
+      </a>
+      <a href="/cameras" class="btn btn-secondary" style="font-size: 0.82rem;">
+        <i data-lucide="camera" style="width: 15px;"></i> Camera Manager
+      </a>
+      <a href="/settings" class="btn btn-secondary" style="font-size: 0.82rem;">
+        <i data-lucide="settings" style="width: 15px;"></i> System Settings
+      </a>
       <a href="/api/attendance/export" class="btn btn-primary" style="font-size: 0.82rem; background: var(--success); color: #fff;">
-        <i data-lucide="download" style="width: 15px;"></i> Download CSV Report
-      </a>
-      <a href="/employees/add" class="btn btn-secondary" style="font-size: 0.82rem;">
-        <i data-lucide="user-plus" style="width: 15px;"></i> Add Employee
-      </a>
-      <a href="/video/process" class="btn btn-primary" style="font-size: 0.82rem;">
-        <i data-lucide="upload" style="width: 15px;"></i> Upload CCTV Video
+        <i data-lucide="download" style="width: 15px;"></i> Export CSV
       </a>
     </div>
   </div>
 </div>
 
-<div class="stats-grid">
+<!-- 9 Key Stat Cards Grid -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
   <div class="stat-card">
     <div>
       <div class="stat-label">Total Active Staff</div>
       <div class="stat-value" id="stat-total-employees">--</div>
     </div>
-    <div class="stat-icon-wrapper">
-      <i data-lucide="users"></i>
-    </div>
+    <div class="stat-icon-wrapper"><i data-lucide="users"></i></div>
   </div>
 
   <div class="stat-card">
     <div>
-      <div class="stat-label">Today's Attendance</div>
-      <div class="stat-value" id="stat-today-attendance">--</div>
+      <div class="stat-label">Present Today</div>
+      <div class="stat-value" id="stat-present-today">--</div>
     </div>
-    <div class="stat-icon-wrapper" style="color: var(--success);">
-      <i data-lucide="user-check"></i>
+    <div class="stat-icon-wrapper" style="color: var(--success);"><i data-lucide="user-check"></i></div>
+  </div>
+
+  <div class="stat-card" style="border-left: 3px solid var(--success);">
+    <div>
+      <div class="stat-label">Currently Inside</div>
+      <div class="stat-value" id="stat-currently-inside" style="color: #34d399;">--</div>
     </div>
+    <div class="stat-icon-wrapper" style="color: var(--success);"><i data-lucide="log-in"></i></div>
   </div>
 
   <div class="stat-card">
     <div>
-      <div class="stat-label">CCTV Videos Processed</div>
-      <div class="stat-value" id="stat-videos-processed">--</div>
+      <div class="stat-label">Currently Outside</div>
+      <div class="stat-value" id="stat-currently-outside">--</div>
     </div>
-    <div class="stat-icon-wrapper" style="color: var(--secondary);">
-      <i data-lucide="video"></i>
+    <div class="stat-icon-wrapper" style="color: var(--text-subtle);"><i data-lucide="log-out"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">IN Events Today</div>
+      <div class="stat-value" id="stat-in-events" style="color: #34d399;">--</div>
     </div>
+    <div class="stat-icon-wrapper" style="color: var(--success);"><i data-lucide="arrow-down-right"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">OUT Events Today</div>
+      <div class="stat-value" id="stat-out-events" style="color: #60a5fa;">--</div>
+    </div>
+    <div class="stat-icon-wrapper" style="color: #60a5fa;"><i data-lucide="arrow-up-right"></i></div>
   </div>
 
   <div class="stat-card">
@@ -59,29 +81,36 @@
       <div class="stat-label">Unknown Face Alerts</div>
       <div class="stat-value" id="stat-unknown-faces">--</div>
     </div>
-    <div class="stat-icon-wrapper" style="color: var(--warning);">
-      <i data-lucide="alert-triangle"></i>
+    <div class="stat-icon-wrapper" style="color: var(--warning);"><i data-lucide="alert-triangle"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">Active Cameras</div>
+      <div class="stat-value" id="stat-active-cameras">--</div>
     </div>
+    <div class="stat-icon-wrapper" style="color: var(--primary);"><i data-lucide="camera"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div>
+      <div class="stat-label">Camera Errors</div>
+      <div class="stat-value" id="stat-camera-errors" style="color: #f87171;">--</div>
+    </div>
+    <div class="stat-icon-wrapper" style="color: #f87171;"><i data-lucide="wifi-off"></i></div>
   </div>
 </div>
 
-
-<div class="grid-equal-2">
-
+<!-- Main Panels Grid -->
+<div class="grid-2">
+  <!-- Currently Inside Table -->
   <div class="glass-card">
     <div class="card-title-bar">
       <div class="card-title">
-        <i data-lucide="clipboard-check" style="color: var(--success);"></i>
-        <span>Today's Verified Attendance</span>
+        <i data-lucide="building" style="color: var(--success);"></i>
+        <span>Employees Currently Inside Premises</span>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <a href="/api/attendance/export" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px; color: #34d399;">
-          <i data-lucide="download" style="width: 12px;"></i> CSV
-        </a>
-        <a href="/attendance" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px;">
-          View Logs
-        </a>
-      </div>
+      <span id="currently-inside-badge" class="badge-status badge-present">0 Inside</span>
     </div>
 
     <div class="custom-table-container">
@@ -89,45 +118,47 @@
         <thead>
           <tr>
             <th>Employee</th>
-            <th>Date</th>
-            <th>Camera Source</th>
-            <th>Proof</th>
+            <th>Department</th>
+            <th>Last IN Time</th>
+            <th>Camera</th>
+            <th>Duration Since IN</th>
           </tr>
         </thead>
-        <tbody id="recent-attendance-tbody">
-          <tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 20px;">Loading attendance records...</td></tr>
+        <tbody id="currently-inside-tbody">
+          <tr><td colspan="5" style="text-align: center; color: var(--text-subtle); padding: 20px;">Loading inside list...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-
-  <div class="glass-card">
-    <div class="card-title-bar">
-      <div class="card-title">
-        <i data-lucide="film" style="color: var(--primary);"></i>
-        <span>CCTV Processing Sessions</span>
+  <!-- Live Recent Activity Feed & Camera Status -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+    <div class="glass-card">
+      <div class="card-title-bar">
+        <div class="card-title">
+          <i data-lucide="activity" style="color: var(--secondary);"></i>
+          <span>Live Recent Attendance Activities</span>
+        </div>
+        <a href="/attendance" class="btn btn-secondary" style="font-size: 0.75rem; padding: 3px 8px;">View All</a>
       </div>
-      <a href="/video/process" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px;">
-        Process New
-      </a>
+
+      <div id="recent-activities-list" style="display:flex; flex-direction:column; gap:8px; max-height: 240px; overflow-y:auto;">
+        <div style="text-align:center; color: var(--text-subtle); padding: 16px;">Loading recent activities...</div>
+      </div>
     </div>
 
-    <div class="custom-table-container">
-      <table class="custom-table">
-        <thead>
-          <tr>
-            <th>Video / Source</th>
-            <th>Date</th>
-            <th>Recognized</th>
-            <th>Status</th>
-            <th>Recording</th>
-          </tr>
-        </thead>
-        <tbody id="recent-sessions-tbody">
-          <tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 20px;">Loading video sessions...</td></tr>
-        </tbody>
-      </table>
+    <div class="glass-card">
+      <div class="card-title-bar">
+        <div class="card-title">
+          <i data-lucide="video" style="color: var(--primary);"></i>
+          <span>Camera Health Overview</span>
+        </div>
+        <a href="/cameras" class="btn btn-secondary" style="font-size: 0.75rem; padding: 3px 8px;">Manage</a>
+      </div>
+
+      <div id="camera-overview-list" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div style="text-align:center; color: var(--text-subtle); padding: 16px; grid-column: span 2;">Loading cameras...</div>
+      </div>
     </div>
   </div>
 </div>
@@ -137,108 +168,89 @@
 <script>
 async function loadDashboardData() {
   try {
-    const response = await fetch('/api/dashboard/stats');
-    const data = await response.json();
-
+    const res = await fetch('/api/dashboard/stats');
+    const data = await res.json();
     if (!data.success) return;
 
-    // Update Top Summary Cards
+    // Update 9 Stats Cards
     document.getElementById('stat-total-employees').innerText = data.total_employees;
-    document.getElementById('stat-today-attendance').innerText = `${data.today_attendance} (${data.attendance_percentage}%)`;
-    document.getElementById('stat-videos-processed').innerText = data.total_videos_processed;
+    document.getElementById('stat-present-today').innerText = `${data.today_attendance} (${data.attendance_percentage}%)`;
+    document.getElementById('stat-currently-inside').innerText = data.currently_inside;
+    document.getElementById('stat-currently-outside').innerText = data.currently_outside;
+    document.getElementById('stat-in-events').innerText = data.in_events_today;
+    document.getElementById('stat-out-events').innerText = data.out_events_today;
     document.getElementById('stat-unknown-faces').innerText = data.total_unknown_faces;
+    document.getElementById('stat-active-cameras').innerText = `${data.active_cameras} / ${data.total_cameras}`;
+    document.getElementById('stat-camera-errors').innerText = data.camera_errors;
 
-    // Render Recent Attendance Table
-    const tbodyAttendance = document.getElementById('recent-attendance-tbody');
-    if (!data.recent_attendance || data.recent_attendance.length === 0) {
-      tbodyAttendance.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-subtle); padding: 30px 0;">No attendance records registered today.</td></tr>`;
+    document.getElementById('currently-inside-badge').innerText = `${data.currently_inside} Currently Inside`;
+
+    // Render Currently Inside Table
+    const tbodyInside = document.getElementById('currently-inside-tbody');
+    if (!data.currently_inside_list || data.currently_inside_list.length === 0) {
+      tbodyInside.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-subtle); padding: 24px;">No employees currently inside.</td></tr>`;
     } else {
-      tbodyAttendance.innerHTML = data.recent_attendance.map(a => `
+      tbodyInside.innerHTML = data.currently_inside_list.map(e => `
         <tr>
           <td>
-            <div style="font-weight: 600; color: var(--text-main);">${a.employee_name}</div>
-            <div style="font-size: 0.75rem; color: var(--text-subtle);">${a.employee_id}</div>
+            <div style="font-weight:600; color:var(--text-main);">${e.employee_name}</div>
+            <div style="font-size:0.72rem; color:var(--text-subtle);">${e.employee_id}</div>
           </td>
-          <td>${a.date}</td>
-          <td>
-            <span style="background: rgba(255,255,255,0.04); padding: 3px 8px; border-radius: 4px; font-weight: 600;">
-              ${a.camera_name}
-            </span>
-          </td>
-          <td>
-            ${a.screenshot ? `
-              <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showImagePreview('/static/screenshots/${a.screenshot}', 'Proof: ${a.employee_name}')">
-                <i data-lucide="image" style="width: 12px;"></i> View
-              </button>
-            ` : `<span style="color: var(--text-subtle); font-size: 0.75rem;">Manual</span>`}
-          </td>
+          <td>${e.department}</td>
+          <td style="font-weight:600; color:#34d399;">${e.last_in_time || '—'}</td>
+          <td><span style="background:rgba(255,255,255,0.04); padding:2px 6px; border-radius:4px; font-size:0.78rem;">${e.camera_name}</span></td>
+          <td><span class="badge-status badge-present">${e.duration_since_in}</span></td>
         </tr>
       `).join('');
     }
 
-    // Render Recent Sessions Table
-    const tbodySessions = document.getElementById('recent-sessions-tbody');
-    if (!data.recent_sessions || data.recent_sessions.length === 0) {
-      tbodySessions.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-subtle); padding: 30px 0;">No CCTV videos processed yet.</td></tr>`;
+    // Render Recent Activities
+    const listActivities = document.getElementById('recent-activities-list');
+    if (!data.recent_events || data.recent_events.length === 0) {
+      listActivities.innerHTML = `<div style="text-align:center; color: var(--text-subtle); padding: 16px;">No events recorded today.</div>`;
     } else {
-      tbodySessions.innerHTML = data.recent_sessions.map(s => `
-        <tr>
-          <td>
-            <div style="font-weight: 600; color: var(--text-main);">
-              ${s.video_name}
-              ${s.source_type === 'webcam' ? `<span style="margin-left:6px; font-size:0.65rem; background: rgba(96,165,250,0.15); color:#60a5fa; padding:1px 6px; border-radius:4px;">LIVE</span>` : ''}
-            </div>
-            <div style="font-size: 0.75rem; color: var(--text-subtle);">${s.camera_name}</div>
-          </td>
-          <td>${s.attendance_date}</td>
-          <td>
-            <span class="badge-status badge-present">
-              <i data-lucide="check" style="width: 12px;"></i> ${s.recognized_faces}
+      listActivities.innerHTML = data.recent_events.map(ev => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:6px; font-size:0.83rem;">
+          <div>
+            <strong>${ev.event_time}</strong> — ${ev.employee_name}
+            <span style="color:${ev.event_type === 'IN' ? 'var(--success)' : '#60a5fa'}; font-weight:700;"> ${ev.event_type}</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-subtle);">${ev.camera_name}</div>
+        </div>
+      `).join('');
+    }
+
+    // Render Camera Overview
+    const listCameras = document.getElementById('camera-overview-list');
+    if (!data.cameras || data.cameras.length === 0) {
+      listCameras.innerHTML = `<div style="text-align:center; color: var(--text-subtle); padding: 16px; grid-column:span 2;">No cameras configured.</div>`;
+    } else {
+      listCameras.innerHTML = data.cameras.map(c => `
+        <div style="padding:10px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid var(--border-color);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-weight:700; font-size:0.83rem;">${c.name}</span>
+            <span class="badge-status ${c.status === 'Connected' ? 'badge-present' : (c.status === 'Error' ? 'badge-absent' : 'badge-new')}" style="font-size:0.68rem; padding:1px 6px;">
+              ${c.status}
             </span>
-          </td>
-          <td><span class="badge-status badge-completed">${s.status}</span></td>
-          <td>
-            ${s.output_video_url ? `
-              <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showVideoPreview('${s.output_video_url}', '${s.video_name}')">
-                <i data-lucide="play" style="width: 12px;"></i> Watch
-              </button>
-            ` : `<span style="color: var(--text-subtle); font-size: 0.75rem;">—</span>`}
-          </td>
-        </tr>
+          </div>
+          <div style="font-size:0.72rem; color:var(--text-subtle); display:flex; justify-content:space-between;">
+            <span>${c.direction} Camera</span>
+            <span>${c.fps} FPS</span>
+          </div>
+        </div>
       `).join('');
     }
 
     if (window.lucide) lucide.createIcons();
 
   } catch (err) {
-    console.error("Error loading dashboard stats:", err);
+    console.error("Error loading dashboard data:", err);
   }
 }
 
-document.addEventListener("DOMContentLoaded", loadDashboardData);
-
-// Simple video preview modal — mirrors the existing image lightbox pattern.
-function showVideoPreview(url, title) {
-  let modal = document.getElementById('video-preview-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'video-preview-modal';
-    modal.style.cssText = 'display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; align-items:center; justify-content:center;';
-    modal.innerHTML = `
-      <div style="background: var(--card-bg, #16181d); padding:16px; border-radius:10px; max-width:90vw;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span id="video-preview-title" style="font-weight:600; color: var(--text-main);"></span>
-          <button onclick="document.getElementById('video-preview-modal').style.display='none'" class="btn btn-secondary" style="padding:2px 10px;">✕</button>
-        </div>
-        <video id="video-preview-el" controls autoplay style="max-width: 80vw; max-height: 70vh; border-radius:6px;"></video>
-      </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-  }
-  document.getElementById('video-preview-title').innerText = title || 'Recording';
-  const videoEl = document.getElementById('video-preview-el');
-  videoEl.src = url;
-  modal.style.display = 'flex';
-}
+document.addEventListener("DOMContentLoaded", () => {
+  loadDashboardData();
+  setInterval(loadDashboardData, 5000);
+});
 </script>
 {% endblock %}

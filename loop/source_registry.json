@@ -1,0 +1,56 @@
+{
+  "sources": [
+    {
+      "source_id": "SIM-01",
+      "site": "Lab 1 - Virtual Camera Lab",
+      "location": "Main Entrance",
+      "direction": "IN",
+      "brand_simulated": "Hikvision",
+      "status": "Simulated",
+      "protocol": "RTSP",
+      "stream_uri": "rtsp://localhost:8554/entrance",
+      "resolution": "640x480",
+      "fps_source": 25,
+      "notes": "Synthetic testsrc pattern with on-screen label, looped via ffmpeg"
+    },
+    {
+      "source_id": "SIM-02",
+      "site": "Lab 1 - Virtual Camera Lab",
+      "location": "Main Exit",
+      "direction": "OUT",
+      "brand_simulated": "Dahua",
+      "status": "Simulated",
+      "protocol": "RTSP",
+      "stream_uri": "rtsp://localhost:8554/exit",
+      "resolution": "640x480",
+      "fps_source": 25,
+      "notes": "Synthetic testsrc2 pattern with on-screen label, looped via ffmpeg"
+    },
+    {
+      "source_id": "SIM-03",
+      "site": "Lab 1 - Virtual Camera Lab",
+      "location": "Reception",
+      "direction": "IN",
+      "brand_simulated": "CP Plus",
+      "status": "Simulated",
+      "protocol": "RTSP",
+      "stream_uri": "rtsp://localhost:8554/reception",
+      "resolution": "640x480",
+      "fps_source": 25,
+      "notes": "Synthetic smptebars pattern with on-screen label, looped via ffmpeg"
+    },
+    {
+      "source_id": "SIM-04",
+      "site": "Lab 1 - Virtual Camera Lab",
+      "location": "Parking Gate",
+      "direction": "OUT",
+      "brand_simulated": "Uniview",
+      "status": "Simulated",
+      "protocol": "RTSP",
+      "stream_uri": "rtsp://localhost:8554/parking",
+      "resolution": "640x480",
+      "fps_source": 25,
+      "notes": "Synthetic rgbtestsrc pattern with on-screen label, looped via ffmpeg"
+    }
+  ]
+}

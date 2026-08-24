@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lab 3 — Source Registry &amp; Live Preview</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121821;
+    --panel-border: #1f2937;
+    --text: #e5e9ef;
+    --text-dim: #7c8a9c;
+    --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+    --online: #34d399;
+    --offline: #f87171;
+    --accent: #38bdf8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    padding: 28px 32px 60px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0;
+    color: var(--text);
+  }
+  header h1 span { color: var(--text-dim); font-weight: 400; }
+  .updated {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 18px;
+  }
+  .tile {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+  }
+  .tile.online { border-color: rgba(52, 211, 153, 0.35); }
+  .tile.offline { border-color: rgba(248, 113, 113, 0.35); }
+  .tile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: #0e1420;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .tile-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .online .dot { background: var(--online); box-shadow: 0 0 6px var(--online); }
+  .offline .dot { background: var(--offline); box-shadow: 0 0 6px var(--offline); }
+  .tile-id { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+  .video-wrap {
+    aspect-ratio: 4 / 3;
+    background: #000;
+    position: relative;
+  }
+  .video-wrap iframe {
+    width: 100%; height: 100%; border: 0; display: block;
+  }
+  .video-fallback {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+  }
+  .stats {
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+  }
+  .stats .k { color: var(--text-dim); }
+  .stats .v { color: var(--text); text-align: right; }
+  .badge {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: var(--mono);
+  }
+  .online .badge { background: rgba(52, 211, 153, 0.12); color: var(--online); }
+  .offline .badge { background: rgba(248, 113, 113, 0.12); color: var(--offline); }
+  footer {
+    margin-top: 28px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--panel-border);
+    padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Source Registry <span>/ Live Preview — Lab 3</span></h1>
+  <div class="updated" id="updated">connecting...</div>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<footer>
+  All sources below are <strong style="color:var(--text)">SIMULATED</strong> (Lab 1 virtual camera lab).
+  Status is polled from MediaMTX every 3s via health_monitor.py — this dashboard reads
+  <code>source_status.json</code>, it does not touch your attendance/embedding model.
+</footer>
+
+<script>
+const MEDIAMTX_HOST = "localhost";
+const WEBRTC_PORT = 8889;
+
+async function loadRegistry() {
+  const res = await fetch("source_registry.json");
+  const data = await res.json();
+  return data.sources;
+}
+
+function tileTemplate(source) {
+  const path = source.stream_uri.split("/").pop();
+  return `
+    <div class="tile offline" id="tile-${source.source_id}">
+      <div class="tile-head">
+        <div class="tile-title">
+          <span class="dot"></span>
+          ${source.location} <span style="color:var(--text-dim)">(${source.direction})</span>
+        </div>
+        <span class="tile-id">${source.source_id}</span>
+      </div>
+      <div class="video-wrap">
+        <iframe src="http://${MEDIAMTX_HOST}:${WEBRTC_PORT}/${path}"
+                allow="autoplay" loading="lazy"></iframe>
+      </div>
+      <div class="stats">
+        <div class="k">brand (sim.)</div><div class="v">${source.brand_simulated}</div>
+        <div class="k">status</div><div class="v"><span class="badge" id="badge-${source.source_id}">—</span></div>
+        <div class="k">bitrate</div><div class="v" id="bitrate-${source.source_id}">—</div>
+        <div class="k">readers</div><div class="v" id="readers-${source.source_id}">—</div>
+        <div class="k">reconnects</div><div class="v" id="reconnects-${source.source_id}">—</div>
+        <div class="k">last online</div><div class="v" id="lastonline-${source.source_id}">—</div>
+      </div>
+    </div>
+  `;
+}
+
+async function refreshStatus() {
+  try {
+    const res = await fetch("source_status.json?_=" + Date.now());
+    const data = await res.json();
+    document.getElementById("updated").textContent = "updated " + data.updated_at;
+
+    data.sources.forEach(s => {
+      const tile = document.getElementById(`tile-${s.source_id}`);
+      if (!tile) return;
+      tile.classList.remove("online", "offline");
+      tile.classList.add(s.status);
+
+      document.getElementById(`badge-${s.source_id}`).textContent = s.status;
+      document.getElementById(`bitrate-${s.source_id}`).textContent =
+        (s.throughput_bps / 1000).toFixed(0) + " kbps";
+      document.getElementById(`readers-${s.source_id}`).textContent = s.reader_count;
+      document.getElementById(`reconnects-${s.source_id}`).textContent = s.reconnect_count;
+      document.getElementById(`lastonline-${s.source_id}`).textContent = s.last_seen_online;
+    });
+  } catch (e) {
+    document.getElementById("updated").textContent = "status feed unreachable — is health_monitor.py running?";
+  }
+}
+
+(async () => {
+  const sources = await loadRegistry();
+  document.getElementById("grid").innerHTML = sources.map(tileTemplate).join("");
+  refreshStatus();
+  setInterval(refreshStatus, 3000);
+})();
+</script>
+
+</body>
+</html>

@@ -36,6 +36,7 @@ async def upload_and_process_video(
     background_tasks: BackgroundTasks,
     camera_name: str = Form(...),
     attendance_date: str = Form(...),
+    direction: str = Form("IN"),
     video: UploadFile = File(...)
 ):
     if not video.filename:
@@ -54,14 +55,16 @@ async def upload_and_process_video(
         save_path,
         camera_name.strip(),
         attendance_date.strip(),
-        session_id
+        session_id,
+        direction.strip().upper()
     )
 
     return {
         "status": True,
-        "message": f"Processing started for video '{video.filename}'.",
+        "message": f"Processing started for {direction.upper()} video '{video.filename}'.",
         "session_id": session_id,
         "camera_name": camera_name,
+        "direction": direction.upper(),
         "attendance_date": attendance_date
     }
 

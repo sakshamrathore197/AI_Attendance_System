@@ -29,6 +29,8 @@ from app.routers.attendance import router as attendance_router
 from app.routers.video import router as video_router
 from app.routers.unknown_faces import router as unknown_faces_router
 from app.routers.video_stream import router as video_stream_router
+from app.routers.cameras import router as cameras_router
+from app.routers.settings import router as settings_router
 
 # Include routers
 app.include_router(dashboard_router)
@@ -37,3 +39,5 @@ app.include_router(attendance_router)
 app.include_router(video_router)
 app.include_router(unknown_faces_router)
 app.include_router(video_stream_router)
+app.include_router(cameras_router)
+app.include_router(settings_router)
