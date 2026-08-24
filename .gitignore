@@ -1,0 +1,5 @@
+static/uploads/video/
+__pycache__/
+*.pyc
+.venv/
+venv/
