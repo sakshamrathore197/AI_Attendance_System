@@ -1,28 +1,46 @@
+
 import os
-from sqlalchemy import create_engine, event
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Enforce strict single absolute database file path at project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "attendance.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+load_dotenv()
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={
-        "check_same_thread": False,
-        "timeout": 15
-    }
-)
+# Build or get DATABASE_URL
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Enable WAL (Write-Ahead Logging) to allow concurrent reads/writes and prevent lock conflict copies
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA busy_timeout=5000")
-    cursor.close()
+if not DATABASE_URL:
+    # Check for discrete connection params
+    db_user = os.getenv("DB_USER")
+    db_password = os.getenv("DB_PASSWORD")
+    db_host = os.getenv("DB_HOST")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME")
+
+    if db_user and db_host and db_name:
+        auth = f"{db_user}:{db_password}@" if db_password else f"{db_user}@"
+        DATABASE_URL = f"postgresql://{auth}{db_host}:{db_port}/{db_name}"
+    else:
+        DATABASE_URL = "sqlite:///attendance.db"
+
+# SQLAlchemy 1.4+ / 2.0+ requires postgresql:// instead of postgres://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+is_sqlite = DATABASE_URL.startswith("sqlite")
+
+if is_sqlite:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20
+    )
 
 SessionLocal = sessionmaker(
     autocommit=False,

@@ -10,11 +10,12 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/settings")
 def settings_page(request: Request):
     settings = SettingsService.get_all()
-    return templates.TemplateResponse("settings.html", {
-        "request": request,
-        "page_title": "System Settings",
-        "settings": settings
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={"page_title": "System Settings", "settings": settings}
+    )
+
 
 
 @router.get("/api/settings")

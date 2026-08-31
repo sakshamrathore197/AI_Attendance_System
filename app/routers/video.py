@@ -1,3 +1,12 @@
+import contextvars
+import contextvars
+import contextvars
+from os import name
+import contextvars
+import contextvars
+import contextvars
+import contextvars
+import contextvars
 import os
 import shutil
 import uuid
@@ -22,14 +31,12 @@ def process_page(request: Request, db: Session = Depends(get_db)):
     recent_sessions = db.query(VideoSession).order_by(VideoSession.id.desc()).limit(10).all()
     today_str = str(date.today())
     return templates.TemplateResponse(
-        "process_video.html",
-        {
-            "request": request,
-            "page_title": "CCTV Video Processor",
-            "sessions": recent_sessions,
-            "today_date": today_str
-        }
+        request=request,
+        name="process_video.html",
+        context={"page_title": "CCTV Video Processor", "sessions": recent_sessions, "today_date": today_str}
     )
+
+
 
 @router.post("/video/process")
 async def upload_and_process_video(

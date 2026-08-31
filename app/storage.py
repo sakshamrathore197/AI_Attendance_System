@@ -1,4 +1,4 @@
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from app.database import Base, engine, SessionLocal
 from app.models import Camera, SystemSetting
 
@@ -37,35 +37,25 @@ DEFAULT_CAMERAS = [
 def init_db():
     Base.metadata.create_all(bind=engine)
 
-    with engine.connect() as conn:
-        # 1. Alter unknown_faces if columns missing
-        try:
-            res = conn.execute(text("PRAGMA table_info(unknown_faces)"))
-            cols = [r[1] for r in res.fetchall()]
-            if cols:
+    try:
+        inspector = inspect(engine)
+        if inspector.has_table("unknown_faces"):
+            cols = [c["name"] for c in inspector.get_columns("unknown_faces")]
+            with engine.connect() as conn:
                 for col_name, col_type in [
-                    ("created_at", "DATETIME"),
-                    ("camera_id", "VARCHAR"),
-                    ("camera_name", "VARCHAR"),
-                    ("first_seen", "VARCHAR"),
-                    ("last_seen", "VARCHAR"),
+                    ("created_at", "TIMESTAMP"),
+                    ("camera_id", "VARCHAR(255)"),
+                    ("camera_name", "VARCHAR(255)"),
+                    ("first_seen", "VARCHAR(255)"),
+                    ("last_seen", "VARCHAR(255)"),
                     ("seen_count", "INTEGER DEFAULT 1"),
                 ]:
                     if col_name not in cols:
                         conn.execute(text(f"ALTER TABLE unknown_faces ADD COLUMN {col_name} {col_type}"))
                         conn.commit()
-        except Exception as e:
-            print(f"[DB Migration] UnknownFace check error: {e}")
+    except Exception as e:
+        print(f"[DB Migration] Schema check info: {e}")
 
-        # 2. Unique index on attendance
-        try:
-            conn.execute(text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_employee_date "
-                "ON attendance (employee_id, date)"
-            ))
-            conn.commit()
-        except Exception as e:
-            print(f"[DB Migration] Unique index info: {e}")
 
     # 3. Seed Default Settings & Cameras
     db = SessionLocal()

@@ -1,11 +1,16 @@
 import os
 import shutil
-import numpy as np
+# pyrefly: ignore [missing-import]
+import numpy as np  
 from typing import List, Optional
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Request, Form, File, UploadFile, Depends, HTTPException
+# pyrefly: ignore [missing-import]
 from fastapi.templating import Jinja2Templates
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
+# pyrefly: ignore [missing-import]
 from app.database import get_db, SessionLocal
 from app.models import Employee, EmployeeImage, Attendance
 from app.face_engine import validate_face
@@ -40,20 +45,17 @@ def employees_page(request: Request, db: Session = Depends(get_db)):
         })
 
     return templates.TemplateResponse(
-        "employees.html",
-        {
-            "request": request,
-            "page_title": "Employee Directory",
-            "employees": emp_data,
-            "departments": dept_list
-        }
+        request=request,
+        name="employees.html",
+        context={"page_title": "Employee Directory", "employees": emp_data, "departments": dept_list}
     )
 
 @router.get("/employees/add")
 def employee_add_page(request: Request):
     return templates.TemplateResponse(
-        "add_employee.html",
-        {"request": request, "page_title": "Add New Employee"}
+        request=request,
+        name="add_employee.html",
+        context={"request": request, "page_title": "Add New Employee"}
     )
 
 @router.get("/api/employees")

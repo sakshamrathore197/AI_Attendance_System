@@ -11,11 +11,12 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/cameras")
 def cameras_page(request: Request):
     cameras = CameraManager.get_all_cameras()
-    return templates.TemplateResponse("cameras.html", {
-        "request": request,
-        "page_title": "Camera Management",
-        "cameras": cameras
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="cameras.html",
+        context={"page_title": "Camera Management", "cameras": cameras}
+)
+
 
 
 @router.get("/api/cameras")

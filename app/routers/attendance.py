@@ -83,15 +83,11 @@ def attendance_page(
         })
 
     return templates.TemplateResponse(
-        "attendance.html",
-        {
-            "request": request,
-            "page_title": "Daily Attendance Logs & Intervals",
-            "rows": rows,
-            "available_dates": date_list,
-            "selected_date": target_date
-        }
+        request=request,
+        name="attendance.html",
+        context={"page_title": "Daily Attendance Logs", "rows": rows, "available_dates": date_list, "selected_date": target_date}
     )
+
 
 
 @router.get("/api/attendance/timeline/{employee_id}")

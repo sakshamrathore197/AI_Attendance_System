@@ -39,9 +39,11 @@ An automated, AI-powered Face Recognition Attendance System built with **FastAPI
 
 ## 🛠️ Technology Stack
 
-- **Backend**: Python 3.10+, FastAPI, Uvicorn, SQLAlchemy, SQLite
+- **Backend**: Python 3.10+, FastAPI, Uvicorn, SQLAlchemy
+- **Database**: PostgreSQL (Production) / SQLite (Development fallback)
 - **AI & Computer Vision**: InsightFace (`buffalo_l`), OpenCV, NumPy
-- **Frontend**: HTML5, CSS3 , JavaScript
+- **Containerization**: Docker, Docker Compose
+- **Frontend**: HTML5, CSS3, JavaScript
 
 ---
 
@@ -50,7 +52,7 @@ An automated, AI-powered Face Recognition Attendance System built with **FastAPI
 ```
 AI_Attendance_System/
 ├── app/
-│   ├── database.py              # SQLite database engine & session creation
+│   ├── database.py              # PostgreSQL & SQLite database engine & session creation
 │   ├── face_engine.py           # InsightFace model loader & face validator
 │   ├── main.py                  # FastAPI application entry point & router registration
 │   ├── models.py                # SQLAlchemy ORM models (Employee, Attendance, etc.)
@@ -66,25 +68,9 @@ AI_Attendance_System/
 │       ├── attendance_service.py # Session-aware attendance manager
 │       ├── embedding_service.py  # Thread-safe cached face embeddings loader
 │       └── video_service.py     # Background CCTV video frame processing worker
-├── static/
-│   ├── css/
-│   │   └── styles.css           # Custom enterprise dark design system
-│   ├── js/
-│   │   └── app.js               # Toast notifications, modals, image lightbox
-│   ├── screenshots/             # Saved attendance screenshot proofs
-│   └── uploads/
-│       ├── employees/           # Enrolled employee face profile photos
-│       ├── unknown_faces/       # Unknown face crop snapshots
-│       └── video/               # Uploaded CCTV video files
-├── templates/
-│   ├── add_employee.html        # Employee registration form with dropzone
-│   ├── attendance.html          # Filterable attendance log page
-│   ├── base.html                # Master layout template (header + sidebar)
-│   ├── dashboard.html           # Simple professional dashboard
-│   ├── employees.html           # Employee catalog directory
-│   ├── process_video.html       # CCTV video upload & progress tracking
-│   └── unknown_faces.html       # Unknown face alert gallery
-├── attendance.db                # SQLite Database file
+├── docker-compose.yml           # Multi-container Docker setup (App + PostgreSQL)
+├── Dockerfile                   # App container build definition
+├── .env.example                 # Environment variables configuration template
 ├── requirements.txt             # Python dependencies
 └── README.md                    # System documentation
 ```
@@ -93,34 +79,59 @@ AI_Attendance_System/
 
 ## 🚀 Quick Start & Installation
 
-### 1. Prerequisites
-Ensure you have **Python 3.10+** installed on your system.
+### Option A: Running with Docker Compose (Recommended - includes PostgreSQL)
 
-### 2. Clone / Setup Project Directory
-```bash
-cd /path/to/AI_Attendance_System
-```
+1. Clone / navigate to the project directory:
+   ```bash
+   cd /path/to/AI_Attendance_System
+   ```
 
-### 3. Create & Activate Virtual Environment
+2. Start the application and PostgreSQL database:
+   ```bash
+   docker compose up --build
+   ```
+
+3. Open your browser at:
+   👉 **[http://localhost:8000](http://localhost:8000)**
+
+---
+
+### Option B: Running Locally
+
+#### 1. Prerequisites
+Ensure you have **Python 3.10+** and optionally **PostgreSQL** installed.
+
+#### 2. Create & Activate Virtual Environment
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 4. Install Dependencies
+#### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
----
+#### 4. Configure Database
+Copy `.env.example` to `.env` and configure your database:
+```bash
+cp .env.example .env
+```
 
-## 💻 Running the Web Application
+- **For PostgreSQL**:
+  ```env
+  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/attendance_db
+  ```
+- **For SQLite** (default fallback if `DATABASE_URL` is omitted):
+  ```env
+  DATABASE_URL=sqlite:///attendance.db
+  ```
 
-Start the Uvicorn development server:
-
+#### 5. Start Application
 ```bash
 uvicorn app.main:app --port 8000 --reload
 ```
+
 
 Open your browser and navigate to:
 👉 **[http://localhost:8000](http://localhost:8000)**

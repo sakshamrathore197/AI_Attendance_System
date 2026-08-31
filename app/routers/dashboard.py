@@ -7,9 +7,15 @@ from datetime import date, timedelta
 from app.database import get_db
 from app.models import Employee, Attendance, VideoSession, UnknownFace, AttendanceSession, AttendanceEvent, Camera
 from app.services.inout_engine import InOutEngine, get_recent_events
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+TEMPLATES_DIR = BASE_DIR / "templates"
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
 inout_engine = InOutEngine()
 
 
@@ -17,9 +23,11 @@ inout_engine = InOutEngine()
 @router.get("/dashboard")
 def dashboard_page(request: Request):
     return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "page_title": "Executive Dashboard"}
+        request=request,
+        name="dashboard.html",
+        context={"page_title": "Executive Dashboard"}
     )
+
 
 
 @router.get("/api/dashboard/stats")

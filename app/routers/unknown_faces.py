@@ -19,14 +19,11 @@ def unknown_faces_page(request: Request, db: Session = Depends(get_db)):
     employees = db.query(Employee).filter(Employee.status == "Active").all()
     
     return templates.TemplateResponse(
-        "unknown_faces.html",
-        {
-            "request": request,
-            "page_title": "Unknown Face Detections",
-            "faces": faces,
-            "employees": employees
-        }
+        request=request,
+        name="unknown_faces.html",
+        context={"page_title": "Unknown Face Detections", "faces": faces, "employees": employees}
     )
+
 
 @router.get("/api/unknown-faces")
 def get_unknown_faces_api(status: Optional[str] = None, db: Session = Depends(get_db)):
