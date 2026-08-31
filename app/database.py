@@ -7,7 +7,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 load_dotenv()
 
 # Build or get DATABASE_URL
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://neondb_owner:npg_nFEJT5QfNVo2@ep-holy-resonance-b3wy30sv-pooler.c-4.ap-southeast-1.aws.neon.tech/Attendance?sslmode=require&channel_binding=require"
+)
 
 if not DATABASE_URL:
     # Check for discrete connection params

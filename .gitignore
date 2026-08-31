@@ -5,3 +5,4 @@ __pycache__/
 venv/
 static/uploads/video/
 static/processed_videos/
+.env
